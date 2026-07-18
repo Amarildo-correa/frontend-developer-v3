@@ -31,10 +31,10 @@ body {
     overflow-x: hidden;
 }
 
-/* CSS sem aspect-ratio e sem grid-auto-rows — o JS assume o controle */
 .mosaico {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(calc(var(--icon-size) + var(--bloco-padding) * 2), 1fr));
+    grid-auto-rows: auto; /* linha cresce com o conteúdo */
     width: 100%;
 }
 
