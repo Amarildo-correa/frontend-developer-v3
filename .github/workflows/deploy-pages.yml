@@ -1,0 +1,41 @@
+name: Deploy GitHub Pages
+
+# Publica o conteúdo de project/ no GitHub Pages a cada push na main.
+on:
+  push:
+    branches: [main]
+  # Permite disparar manualmente pela aba Actions.
+  workflow_dispatch:
+
+# Permissões mínimas para o deploy oficial de Pages via OIDC.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Garante um deploy por vez; não cancela um deploy em andamento.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configura Pages
+        uses: actions/configure-pages@v5
+
+      - name: Empacota o artefato (somente a pasta project/)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: project
+
+      - name: Publica no GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
