@@ -1,0 +1,13 @@
+{
+    "markdown.styles": [
+        ".vscode/markdown-preview.css"
+    ],
+    "claudeCodeChat.permissions.yoloMode": false,
+    "notebook.markup.fontSize": 14,
+    "notebook.output.fontSize": 14,
+    "scm.inputFontSize": 14,
+    "editor.minimap.sectionHeaderFontSize": 9,
+    "editor.codeLensFontSize": 14,
+    "editor.suggestFontSize": 14,
+    "editor.fontFamily": "'Fira Code', Consolas, 'Courier New', monospace"
+}

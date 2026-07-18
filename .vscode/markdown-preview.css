@@ -1,0 +1,16 @@
+/* Texto geral do Markdown */
+body {
+    font-size: 16.5px;
+    line-height: 1.6;
+}
+
+/* Blocos de código (``` ... ```) */
+pre {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+/* Código inline (`code`) */
+code {
+    font-size: 14px;
+}

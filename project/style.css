@@ -1,0 +1,53 @@
+/* Tokens */
+:root {
+    --font-base: "Inter", system-ui, sans-serif;
+
+    /* Cores */
+    --color-bg: #0d1420; /* Medidas (único background em toda a aplicação: --color-bg) */
+    --color-line: #2a3b59;
+    --color-text: #dfe7f2;
+    --color-text-muted: #94a3ba;
+    --color-accent: #7aa6e8;
+
+    /* Medidas */
+    --font-size-base: 1rem;
+    --icon-size: 1.25rem; /* fonte do ícone */
+    --bloco-padding: 1.5rem; /* respiro ao redor do ícone */
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+    background: var(--color-bg);
+    min-height: 100dvh;
+    overflow-x: hidden;
+}
+
+/* CSS sem aspect-ratio e sem grid-auto-rows — o JS assume o controle */
+.mosaico {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(calc(var(--icon-size) + var(--bloco-padding) * 2), 1fr));
+    width: 100%;
+}
+
+.mosaico__bloco {
+    aspect-ratio: 1; /* mantém célula quadrada sem altura fixa */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--bloco-padding);
+    border: 1px solid var(--color-line);
+}
+
+.mosaico__bloco .bi {
+    color: var(--color-accent);
+    font-size: var(--icon-size); /* consome o mesmo token */
+}
