@@ -29,15 +29,8 @@ Desenvolver protótipos de frontend **mobile-first**, baseados em grid, utilizan
 
 ## Design System (`DESIGN.md`)
 
-O Design System ainda está em evolução. À medida que o protótipo é desenvolvido,
-validado e refinado, o [`DESIGN.md`](DESIGN.md) DEVE ser atualizado para refletir
-as decisões consolidadas.
+O Design System ainda está em evolução. À medida que o protótipo é desenvolvido, validado e refinado, o [`DESIGN.md`](DESIGN.md) DEVE ser atualizado para refletir as decisões consolidadas.
 
-Os agentes de IA DEVEM utilizar o `DESIGN.md` como fonte de referência para
-compreender o Design System, revisar implementações, propor melhorias,
-identificar inconsistências e orientar novas implementações de frontend.
+Os agentes de IA DEVEM utilizar o `DESIGN.md` como fonte de referência para compreender o Design System, revisar implementações, propor melhorias, identificar inconsistências e orientar novas implementações de frontend.
 
-As diretrizes já documentadas DEVEM ser respeitadas. Entretanto, quando um agente
-identificar uma alternativa tecnicamente superior, mais consistente ou mais
-escalável, ele PODE propor alterações e atualizar o `DESIGN.md`, desde que
-preserve a coerência, a padronização e a evolução do Design System.
+As diretrizes já documentadas DEVEM ser respeitadas. Entretanto, quando um agente identificar uma alternativa tecnicamente superior, mais consistente ou mais escalável, ele PODE propor alterações e atualizar o `DESIGN.md`, desde que preserve a coerência, a padronização e a evolução do Design System.

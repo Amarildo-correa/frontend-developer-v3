@@ -36,16 +36,16 @@ intencionalmente física.
     --font-base: "Inter", system-ui, sans-serif;
 
     /* Cores — paleta escura única */
-    --color-bg: #0d1420;        /* ÚNICO background de toda a aplicação */
-    --color-line: #2a3b59;      /* linhas da grade */
+    --color-bg: #0d1420; /* ÚNICO background de toda a aplicação */
+    --color-line: #2a3b59; /* linhas da grade */
     --color-text: #dfe7f2;
     --color-text-muted: #94a3ba;
-    --color-accent: #7aa6e8;    /* cor dos ícones */
+    --color-accent: #7aa6e8; /* cor dos ícones */
 
     /* Medidas */
     --font-size-base: 1rem;
-    --icon-size: 1.25rem;       /* fonte do ícone dentro do bloco */
-    --bloco-padding: 1.5rem;    /* respiro ao redor do ícone */
+    --icon-size: 1.25rem; /* fonte do ícone dentro do bloco */
+    --bloco-padding: 1.5rem; /* respiro ao redor do ícone */
 
     /* Largura mínima da célula = ícone + respiro dos dois lados.
        DERIVADA (não hardcoded): garante que o quadrado nunca fique menor
@@ -87,7 +87,7 @@ por um número fixo.
 *,
 *::before,
 *::after {
-    box-sizing: border-box;             /* padding/borda contam DENTRO da largura */
+    box-sizing: border-box; /* padding/borda contam DENTRO da largura */
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: transparent; /* remove flash azul no toque mobile */
@@ -95,9 +95,9 @@ por um número fixo.
 
 html,
 body {
-    background: var(--color-bg);        /* fundo único em toda a aplicação */
-    min-height: 100dvh;                 /* dvh acompanha a barra dinâmica do mobile */
-    overflow-x: hidden;                 /* nenhuma rolagem horizontal jamais */
+    background: var(--color-bg); /* fundo único em toda a aplicação */
+    min-height: 100dvh; /* dvh acompanha a barra dinâmica do mobile */
+    overflow-x: hidden; /* nenhuma rolagem horizontal jamais */
 }
 ```
 
@@ -139,13 +139,13 @@ body {
 
 ```css
 .mosaico__bloco {
-    aspect-ratio: 1;        /* altura = largura da coluna → quadrado 1:1 */
+    aspect-ratio: 1; /* altura = largura da coluna → quadrado 1:1 */
     /* Zera o mínimo automático do item de grid (min-width/height: auto =
        min-content). Sem isto, o arredondamento do 1fr pode fazer o conteúdo
        empurrar a célula e quebrar o quadrado. Assim o aspect-ratio sempre vence. */
     min-width: 0;
     min-height: 0;
-    display: flex;          /* centraliza o ícone nos dois eixos */
+    display: flex; /* centraliza o ícone nos dois eixos */
     align-items: center;
     justify-content: center;
     padding: var(--bloco-padding);
@@ -157,7 +157,7 @@ body {
 
 .mosaico__bloco .bi {
     color: var(--color-accent);
-    font-size: var(--icon-size);  /* consome o mesmo token da coluna */
+    font-size: var(--icon-size); /* consome o mesmo token da coluna */
 }
 ```
 
@@ -166,9 +166,9 @@ body {
 Se cada bloco tivesse as 4 bordas, todo ponto de encontro entre dois blocos
 somaria 1px + 1px = 2px, engrossando as linhas internas. A solução:
 
-| Elemento          | Bordas que desenha        |
-| ----------------- | ------------------------- |
-| `.mosaico`        | `border-top` + `border-left` |
+| Elemento          | Bordas que desenha               |
+| ----------------- | -------------------------------- |
+| `.mosaico`        | `border-top` + `border-left`     |
 | `.mosaico__bloco` | `border-right` + `border-bottom` |
 
 Assim cada linha interna é desenhada por **um só** elemento. **NUNCA** dê as
@@ -232,7 +232,7 @@ A moldura externa é responsabilidade **exclusiva** da faixa. A grade **DEVE** z
    esquerda pelo max-width. */
 .mosaico--navbar {
     grid-template-columns: repeat(6, 1fr);
-    max-width: var(--navbar-max);      /* para de esticar no maior smartphone */
+    max-width: var(--navbar-max); /* para de esticar no maior smartphone */
     /* A moldura externa vem da .navbar; zera as arestas herdadas do .mosaico. */
     border-top: 0;
     border-left: 0;
@@ -247,9 +247,9 @@ A moldura externa é responsabilidade **exclusiva** da faixa. A grade **DEVE** z
     color: inherit;
     font: inherit;
     cursor: pointer;
-    border-top: 0;      /* faixa de 1 só linha: sem vizinho acima/à esquerda */
+    border-top: 0; /* faixa de 1 só linha: sem vizinho acima/à esquerda */
     border-left: 0;
-    border-bottom: 0;   /* a base agora é a borda inferior da .navbar */
+    border-bottom: 0; /* a base agora é a borda inferior da .navbar */
 }
 
 /* Botão de overflow ("mais"): oculto enquanto os 6 itens cabem. */
@@ -295,32 +295,46 @@ Cada breakpoint = `n × 4.25rem − 1px`, na ordem **largo → estreito** (o mai
 estreito vence a cascata; os `display: none` são **aditivos**). 1px = 0.0625rem,
 por isso os limiares terminam em `.9375`, `.4375`, etc.
 
-| Viewport (`max-width`) | Colunas | Itens visíveis        | Cálculo do limiar         |
-| ---------------------- | ------- | --------------------- | ------------------------- |
-| (padrão, ≥ 25.5rem)    | 6       | 6 itens (sem "mais")  | `6 × 4.25 = 25.5rem`      |
-| `< 25.4375rem`         | 5       | 4 itens + "mais"      | `25.5rem − 1px`           |
-| `< 21.1875rem`         | 4       | 3 itens + "mais"      | `21.25rem − 1px` (= 5×4.25) |
-| `< 16.9375rem`         | 3       | 2 itens + "mais"      | `17rem − 1px` (= 4×4.25)  |
+| Viewport (`max-width`) | Colunas | Itens visíveis       | Cálculo do limiar           |
+| ---------------------- | ------- | -------------------- | --------------------------- |
+| (padrão, ≥ 25.5rem)    | 6       | 6 itens (sem "mais") | `6 × 4.25 = 25.5rem`        |
+| `< 25.4375rem`         | 5       | 4 itens + "mais"     | `25.5rem − 1px`             |
+| `< 21.1875rem`         | 4       | 3 itens + "mais"     | `21.25rem − 1px` (= 5×4.25) |
+| `< 16.9375rem`         | 3       | 2 itens + "mais"     | `17rem − 1px` (= 4×4.25)    |
 
 ```css
 /* < 25.5rem → 5 colunas: 4 itens + mais */
 @media (max-width: 25.4375rem) {
-    .mosaico--navbar { grid-template-columns: repeat(5, 1fr); }
-    .mosaico__bloco--mais { display: flex; }              /* revela o "mais" */
+    .mosaico--navbar {
+        grid-template-columns: repeat(5, 1fr);
+    }
+    .mosaico__bloco--mais {
+        display: flex;
+    } /* revela o "mais" */
     .mosaico--navbar .mosaico__bloco:nth-child(5),
-    .mosaico--navbar .mosaico__bloco:nth-child(6) { display: none; }
+    .mosaico--navbar .mosaico__bloco:nth-child(6) {
+        display: none;
+    }
 }
 
 /* < 21.25rem → 4 colunas: 3 itens + mais */
 @media (max-width: 21.1875rem) {
-    .mosaico--navbar { grid-template-columns: repeat(4, 1fr); }
-    .mosaico--navbar .mosaico__bloco:nth-child(4) { display: none; }
+    .mosaico--navbar {
+        grid-template-columns: repeat(4, 1fr);
+    }
+    .mosaico--navbar .mosaico__bloco:nth-child(4) {
+        display: none;
+    }
 }
 
 /* < 17rem → 3 colunas: 2 itens + mais */
 @media (max-width: 16.9375rem) {
-    .mosaico--navbar { grid-template-columns: repeat(3, 1fr); }
-    .mosaico--navbar .mosaico__bloco:nth-child(3) { display: none; }
+    .mosaico--navbar {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .mosaico--navbar .mosaico__bloco:nth-child(3) {
+        display: none;
+    }
 }
 ```
 
@@ -353,13 +367,19 @@ main {
     padding-bottom: calc(var(--navbar-max) / 6 + var(--safe-area-bottom));
 }
 @media (max-width: 25.4375rem) {
-    main { padding-bottom: calc(100% / 5 + var(--safe-area-bottom)); }
+    main {
+        padding-bottom: calc(100% / 5 + var(--safe-area-bottom));
+    }
 }
 @media (max-width: 21.1875rem) {
-    main { padding-bottom: calc(100% / 4 + var(--safe-area-bottom)); }
+    main {
+        padding-bottom: calc(100% / 4 + var(--safe-area-bottom));
+    }
 }
 @media (max-width: 16.9375rem) {
-    main { padding-bottom: calc(100% / 3 + var(--safe-area-bottom)); }
+    main {
+        padding-bottom: calc(100% / 3 + var(--safe-area-bottom));
+    }
 }
 ```
 
