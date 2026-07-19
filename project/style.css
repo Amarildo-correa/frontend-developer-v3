@@ -1,3 +1,13 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN SYSTEM — MOSAICO
+   Base única: uma grade de células quadradas 1:1 separadas por linhas de 1px,
+   sem bordas duplicadas. Dois usos derivam dela:
+     • .mosaico            → mosaico de preenchimento (auto-fill de colunas)
+     • .mosaico--navbar    → navbar inferior fixa (6 colunas fixas)
+   Invariantes: (1) todo bloco é quadrado; (2) toda linha da grade tem 1px.
+   Spec normativa completa em ../DESIGN.md.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
 /* Tokens */
 :root {
     --font-base: "Inter", system-ui, sans-serif;
@@ -46,9 +56,12 @@
 
 html,
 body {
-    background: var(--color-bg);
+    background: var(--color-bg); /* fundo único da aplicação, herdado por tudo */
+    /* dvh (dynamic viewport height) acompanha a barra de endereço móvel que
+       aparece/some; 100vh não desconta essa barra e causaria saltos de layout.
+       min-height (não height): permite que o conteúdo cresça além da tela. */
     min-height: 100dvh;
-    overflow-x: hidden;
+    overflow-x: hidden; /* trava qualquer rolagem horizontal acidental */
 }
 
 .mosaico {
@@ -107,17 +120,20 @@ body {
 /* Os botões reaproveitam .mosaico__bloco; aqui só neutralizamos a aparência
    nativa do <button>, preservando as bordas direita/inferior do grid. */
 .mosaico--navbar .mosaico__bloco {
-    appearance: none;
-    -webkit-appearance: none;
-    background: none;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
+    appearance: none; /* remove o estilo nativo do <button> (relevo, gradiente) */
+    -webkit-appearance: none; /* mesma coisa em Safari/WebKit antigos */
+    background: none; /* descarta o cinza padrão do botão; o fundo vem da navbar */
+    color: inherit; /* ícone volta a herdar a cor do tema, não o preto do sistema */
+    font: inherit; /* zera a fonte menor que o <button> aplica por conta própria */
+    cursor: pointer; /* mantém o ponteiro de "clicável" que o reset apagaria */
+    /* A navbar é uma faixa de UMA linha: não há vizinho acima nem à esquerda
+       para desenhar essas arestas, então removemos o top/left que .mosaico__bloco
+       herda. Direita/inferior permanecem e mantêm as divisórias entre botões. */
     border-top: 0;
     border-left: 0;
 }
 
-/* Botão de overflow: oculto enquanto os 8 cabem. */
+/* Botão de overflow: oculto enquanto os 6 itens cabem. */
 .mosaico__bloco--mais {
     display: none;
 }
