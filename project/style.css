@@ -16,6 +16,19 @@
     /* Largura mínima da célula = ícone + respiro dos dois lados.
        Garante que o quadrado nunca fique menor que o conteúdo. */
     --bloco-min: calc(var(--icon-size) + var(--bloco-padding) * 2);
+
+    /* Safe areas (notch/Dynamic Island/home indicator no iOS; edge-to-edge no
+       Chrome Android) — resolvem para 0px em telas sem essas áreas, então não
+       afetam o layout padrão. Fallback 0px explícito: env() com var. inválida
+       (navegador sem suporte) cai nesse valor em vez de invalidar a regra. */
+    --safe-area-top: env(safe-area-inset-top, 0px);
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-left: env(safe-area-inset-left, 0px);
+    --safe-area-right: env(safe-area-inset-right, 0px);
+
+    /* Camada do header/rodapé "grudentos" (position: sticky) acima do
+       conteúdo que rola por baixo. */
+    --z-sticky: 10;
 }
 
 *,
@@ -35,9 +48,26 @@ body {
 }
 
 .mosaico {
+    position: relative; /* referência para a moldura ::after */
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(var(--bloco-min), 1fr));
     width: 100%;
+    /* O container fecha as arestas de cima e da esquerda; cada bloco cuida
+       da direita e de baixo. Resultado: linhas de 1px únicas em toda a grade,
+       sem bordas duplicadas ao se encostarem. */
+    border-top: 1px solid var(--color-line);
+    border-left: 1px solid var(--color-line);
+}
+
+/* Moldura de destaque contornando o mosaico inteiro, SOBREPOSTA às linhas
+   cinza do perímetro. Como pinta depois dos blocos e fica com pointer-events
+   desligado, a moldura acent fica acima de tudo sem bloquear interações. */
+.mosaico::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--color-accent);
+    pointer-events: none;
 }
 
 .mosaico__bloco {
@@ -51,7 +81,10 @@ body {
     align-items: center;
     justify-content: center;
     padding: var(--bloco-padding);
-    border: 1px solid var(--color-line);
+    /* Só direita + inferior: a esquerda/topo vêm do vizinho anterior
+       (ou do container na primeira coluna/linha). Evita a borda dupla. */
+    border-right: 1px solid var(--color-line);
+    border-bottom: 1px solid var(--color-line);
 }
 
 .mosaico__bloco .bi {
