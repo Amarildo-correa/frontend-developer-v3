@@ -27,30 +27,34 @@
              navbar fixa para o último conteúdo não ficar escondido atrás dela. -->
         <main></main>
 
-        <!-- Navbar inferior fixa: reaproveita .mosaico + .mosaico__bloco.
+        <!-- Navbar inferior fixa. Dois níveis:
+             • <nav class="navbar">      → a FAIXA: 100% da largura, moldura e fundo.
+             • <div class="mosaico--navbar"> → a GRADE de botões, limitada à esquerda.
              O último bloco (--mais) só aparece quando os 6 não cabem. -->
-        <nav class="mosaico mosaico--navbar" aria-label="Navegação principal">
-            <button type="button" class="mosaico__bloco" aria-label="Início">
-                <i class="bi bi-house"></i>
-            </button>
-            <button type="button" class="mosaico__bloco" aria-label="Buscar">
-                <i class="bi bi-search"></i>
-            </button>
-            <button type="button" class="mosaico__bloco" aria-label="Explorar">
-                <i class="bi bi-compass"></i>
-            </button>
-            <button type="button" class="mosaico__bloco" aria-label="Notificações">
-                <i class="bi bi-bell"></i>
-            </button>
-            <button type="button" class="mosaico__bloco" aria-label="Mensagens">
-                <i class="bi bi-chat"></i>
-            </button>
-            <button type="button" class="mosaico__bloco" aria-label="Perfil">
-                <i class="bi bi-person-circle"></i>
-            </button>
-            <button type="button" class="mosaico__bloco mosaico__bloco--mais" aria-label="Mais opções">
-                <i class="bi bi-three-dots-vertical"></i>
-            </button>
+        <nav class="navbar" aria-label="Navegação principal">
+            <div class="mosaico mosaico--navbar">
+                <button type="button" class="mosaico__bloco" aria-label="Início">
+                    <i class="bi bi-house"></i>
+                </button>
+                <button type="button" class="mosaico__bloco" aria-label="Buscar">
+                    <i class="bi bi-search"></i>
+                </button>
+                <button type="button" class="mosaico__bloco" aria-label="Explorar">
+                    <i class="bi bi-compass"></i>
+                </button>
+                <button type="button" class="mosaico__bloco" aria-label="Notificações">
+                    <i class="bi bi-bell"></i>
+                </button>
+                <button type="button" class="mosaico__bloco" aria-label="Mensagens">
+                    <i class="bi bi-chat"></i>
+                </button>
+                <button type="button" class="mosaico__bloco" aria-label="Perfil">
+                    <i class="bi bi-person-circle"></i>
+                </button>
+                <button type="button" class="mosaico__bloco mosaico__bloco--mais" aria-label="Mais opções">
+                    <i class="bi bi-three-dots-vertical"></i>
+                </button>
+            </div>
         </nav>
     </body>
 </html>

@@ -195,29 +195,51 @@ Grade que preenche a largura com quantas colunas couberem. Cada célula é um
 
 ---
 
-## 6. Uso B — Navbar inferior fixa — `.mosaico--navbar`
+## 6. Uso B — Navbar inferior fixa — `.navbar` + `.mosaico--navbar`
 
-A navbar reaproveita **toda** a lógica de grid do `.mosaico`: mesmos tokens,
-mesma estratégia de bordas, mesmos blocos 1:1. A única troca no grid é
-`auto-fill` → **6 colunas fixas**.
+A navbar tem **dois elementos com papéis distintos**:
+
+- **`.navbar`** → a **faixa**: `position: fixed`, ocupa **100% da largura** e é a
+  **única** dona da moldura completa (`border` em `--color-line`), do fundo e da
+  safe area.
+- **`.mosaico--navbar`** → a **grade de botões** aninhada na faixa. Reaproveita
+  **toda** a lógica de grid do `.mosaico` (mesmos tokens, blocos 1:1, breakpoints);
+  a única troca é `auto-fill` → **6 colunas fixas**. Fica limitada a `--navbar-max`
+  à esquerda e só contribui as **divisórias verticais** entre botões.
+
+A moldura externa é responsabilidade **exclusiva** da faixa. A grade **DEVE** zerar
+`border-top`/`border-left` (que herda do `.mosaico`) e os botões **DEVEM** zerar
+`border-bottom`, para não sobrepor as linhas da faixa — preservando a invariante de
+1px por linha.
 
 ```css
-.mosaico--navbar {
+.navbar {
     position: fixed;
-    /* Ancorada no canto inferior esquerdo; permanece visível durante o scroll.
-       Sem `right`: a largura é limitada por max-width, começando pela esquerda. */
-    inset: auto auto 0 0;
-    grid-template-columns: repeat(6, 1fr);
-    max-width: var(--navbar-max);      /* para de esticar no maior smartphone */
+    /* Estica de x=0 a x=100% (right: 0) e cola na base; visível durante o scroll.
+       A moldura vai de ponta a ponta mesmo com os botões só à esquerda. */
+    inset: auto 0 0 0;
     z-index: var(--z-sticky);
     background: var(--color-bg);
+    /* Moldura completa de 1px; a grade interna não redesenha nenhuma das 4
+       arestas, então cada linha continua com 1px único. */
+    border: 1px solid var(--color-line);
     /* Respeita o home indicator: a faixa da safe area recebe --color-bg em vez
        de sobrepor os botões. */
     padding-bottom: var(--safe-area-bottom);
 }
 
+/* Grade de botões: reaproveita o grid do .mosaico e os breakpoints; ancorada à
+   esquerda pelo max-width. */
+.mosaico--navbar {
+    grid-template-columns: repeat(6, 1fr);
+    max-width: var(--navbar-max);      /* para de esticar no maior smartphone */
+    /* A moldura externa vem da .navbar; zera as arestas herdadas do .mosaico. */
+    border-top: 0;
+    border-left: 0;
+}
+
 /* Os botões reaproveitam .mosaico__bloco; aqui só neutralizamos a aparência
-   nativa do <button>, preservando as bordas direita/inferior do grid. */
+   nativa do <button>, preservando a borda direita (divisória entre botões). */
 .mosaico--navbar .mosaico__bloco {
     appearance: none;
     -webkit-appearance: none;
@@ -225,8 +247,9 @@ mesma estratégia de bordas, mesmos blocos 1:1. A única troca no grid é
     color: inherit;
     font: inherit;
     cursor: pointer;
-    border-top: 0;      /* a navbar tem 1 só linha: não repete topo/esquerda */
+    border-top: 0;      /* faixa de 1 só linha: sem vizinho acima/à esquerda */
     border-left: 0;
+    border-bottom: 0;   /* a base agora é a borda inferior da .navbar */
 }
 
 /* Botão de overflow ("mais"): oculto enquanto os 6 itens cabem. */
@@ -237,22 +260,26 @@ mesma estratégia de bordas, mesmos blocos 1:1. A única troca no grid é
 
 ### 6.1 HTML da navbar (contrato)
 
-- Container: `<nav class="mosaico mosaico--navbar" aria-label="...">`.
+- Faixa externa: `<nav class="navbar" aria-label="...">`.
+- Dentro dela, a grade: `<div class="mosaico mosaico--navbar">` (é o `<div>` que
+  leva as classes de grade, **não** o `<nav>`).
 - Cada item DEVE ser um `<button type="button">` com `.mosaico__bloco` e um
   `aria-label` descritivo (o ícone sozinho não é acessível).
 - O **último** botão DEVE ser o overflow: `.mosaico__bloco .mosaico__bloco--mais`
   com o ícone `bi-three-dots-vertical`.
-- **6 itens de navegação + 1 botão "mais"** = 7 filhos no total.
+- **6 itens de navegação + 1 botão "mais"** = 7 filhos da grade no total.
 
 ```html
-<nav class="mosaico mosaico--navbar" aria-label="Navegação principal">
-    <button type="button" class="mosaico__bloco" aria-label="Início">
-        <i class="bi bi-house"></i>
-    </button>
-    <!-- Buscar, Explorar, Notificações, Mensagens, Perfil (6 itens no total) -->
-    <button type="button" class="mosaico__bloco mosaico__bloco--mais" aria-label="Mais opções">
-        <i class="bi bi-three-dots-vertical"></i>
-    </button>
+<nav class="navbar" aria-label="Navegação principal">
+    <div class="mosaico mosaico--navbar">
+        <button type="button" class="mosaico__bloco" aria-label="Início">
+            <i class="bi bi-house"></i>
+        </button>
+        <!-- Buscar, Explorar, Notificações, Mensagens, Perfil (6 itens no total) -->
+        <button type="button" class="mosaico__bloco mosaico__bloco--mais" aria-label="Mais opções">
+            <i class="bi bi-three-dots-vertical"></i>
+        </button>
+    </div>
 </nav>
 ```
 
@@ -368,7 +395,8 @@ Ao reproduzir o Design System, o resultado está correto se:
 - [ ] `.mosaico` usa `auto-fill` (nunca `auto-fit`) + `minmax(--bloco-min, 1fr)`.
 - [ ] Bordas: container faz top/left, bloco faz right/bottom — linhas de 1px únicas.
 - [ ] Todo bloco é quadrado 1:1 (`aspect-ratio: 1` + `min-width/height: 0`).
-- [ ] Navbar = `.mosaico .mosaico--navbar`, fixa, 6 colunas, `max-width: --navbar-max`.
+- [ ] Faixa `.navbar` fixa, 100% da largura, com a moldura completa (`border` em `--color-line`).
+- [ ] Grade `.mosaico .mosaico--navbar` aninhada na faixa, 6 colunas, `max-width: --navbar-max`, zerando top/left; botões zeram `border-bottom`.
 - [ ] Navbar: 6 botões + 1 "mais", cada um com `aria-label`.
 - [ ] Breakpoints da navbar em ordem largo→estreito, `display: none` aditivos.
 - [ ] `<main>` reserva `padding-bottom` espelhando os breakpoints da navbar.

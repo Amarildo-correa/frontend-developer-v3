@@ -3,7 +3,8 @@
    Base única: uma grade de células quadradas 1:1 separadas por linhas de 1px,
    sem bordas duplicadas. Dois usos derivam dela:
      • .mosaico            → mosaico de preenchimento (auto-fill de colunas)
-     • .mosaico--navbar    → navbar inferior fixa (6 colunas fixas)
+     • .mosaico--navbar    → grade de 6 botões, aninhada na faixa .navbar (fixa,
+                             100% da largura, dona da moldura em --color-line)
    Invariantes: (1) todo bloco é quadrado; (2) toda linha da grade tem 1px.
    Spec normativa completa em ../DESIGN.md.
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -97,28 +98,49 @@ body {
     font-size: var(--icon-size); /* consome o mesmo token */
 }
 
-/* Navbar inferior fixa — reaproveita toda a lógica de grid do .mosaico:
-   mesmos tokens, mesma estratégia de bordas sem duplicação e blocos 1:1.
-   Única troca no grid: auto-fill vira 6 colunas fixas. */
-.mosaico--navbar {
+/* ─ Navbar inferior fixa ──────────────────────────────────────────────────
+   Dois elementos com papéis distintos:
+     • .navbar          → a FAIXA: fixa na base, ocupa 100% da largura e é a única
+                          dona da moldura completa (--color-line), do fundo e da
+                          safe area.
+     • .mosaico--navbar → a GRADE de botões dentro da faixa: reaproveita a lógica
+                          do .mosaico (blocos 1:1) e os breakpoints, limitada a
+                          --navbar-max à esquerda. Só contribui as divisórias
+                          verticais entre botões.
+   A moldura externa é responsabilidade exclusiva da faixa; a grade zera as arestas
+   que a duplicariam, preservando o invariante de 1px por linha (DESIGN.md, item 7). */
+.navbar {
     position: fixed;
-    /* ancorada no canto inferior esquerdo; permanece visível durante o scroll.
-       Sem right: a largura é limitada pelo max-width, iniciando pela esquerda. */
-    inset: auto auto 0 0;
-    grid-template-columns: repeat(6, 1fr);
-    /* Acima do maior smartphone atual as 6 colunas param de esticar, evitando
-       a navbar gigante no desktop. Abaixo disso a largura cai para 100% e os
-       breakpoints reduzem colunas quando --bloco-min não é respeitado. */
-    max-width: var(--navbar-max);
+    /* estica de x=0 a x=100% (right: 0) e cola na base; permanece visível no
+       scroll. A moldura vai de ponta a ponta mesmo com os botões só à esquerda. */
+    inset: auto 0 0 0;
     z-index: var(--z-sticky);
     background: var(--color-bg);
+    /* moldura completa de 1px em toda a faixa; a grade interna não redesenha
+       nenhuma dessas 4 arestas, então cada linha continua com 1px único. */
+    border: 1px solid var(--color-line);
     /* respeita o home indicator (iOS Safari / Chrome Android): a faixa da
        safe area recebe --color-bg em vez de sobrepor os botões */
     padding-bottom: var(--safe-area-bottom);
 }
 
+/* Grade de botões — reaproveita toda a lógica de grid do .mosaico (mesmos tokens,
+   blocos 1:1) e mantém os breakpoints responsivos abaixo. Fica no fluxo dentro da
+   faixa, ancorada à esquerda pelo max-width. */
+.mosaico--navbar {
+    grid-template-columns: repeat(6, 1fr);
+    /* Acima do maior smartphone atual as 6 colunas param de esticar, evitando
+       a grade gigante no desktop. Abaixo disso a largura cai para 100% e os
+       breakpoints reduzem colunas quando --bloco-min não é respeitado. */
+    max-width: var(--navbar-max);
+    /* A moldura externa vem da .navbar; zera o topo/esquerda que a grade herda
+       de .mosaico para não sobrepor a linha da faixa (evita borda de 2px). */
+    border-top: 0;
+    border-left: 0;
+}
+
 /* Os botões reaproveitam .mosaico__bloco; aqui só neutralizamos a aparência
-   nativa do <button>, preservando as bordas direita/inferior do grid. */
+   nativa do <button>, preservando a borda direita (divisória entre botões). */
 .mosaico--navbar .mosaico__bloco {
     appearance: none; /* remove o estilo nativo do <button> (relevo, gradiente) */
     -webkit-appearance: none; /* mesma coisa em Safari/WebKit antigos */
@@ -126,11 +148,12 @@ body {
     color: inherit; /* ícone volta a herdar a cor do tema, não o preto do sistema */
     font: inherit; /* zera a fonte menor que o <button> aplica por conta própria */
     cursor: pointer; /* mantém o ponteiro de "clicável" que o reset apagaria */
-    /* A navbar é uma faixa de UMA linha: não há vizinho acima nem à esquerda
-       para desenhar essas arestas, então removemos o top/left que .mosaico__bloco
-       herda. Direita/inferior permanecem e mantêm as divisórias entre botões. */
+    /* Topo/esquerda: viriam do vizinho — não há vizinho numa faixa de uma linha.
+       Inferior: agora é a borda de baixo da .navbar. Só a direita permanece e
+       desenha as divisórias verticais (inclusive a do último botão em --navbar-max). */
     border-top: 0;
     border-left: 0;
+    border-bottom: 0;
 }
 
 /* Botão de overflow: oculto enquanto os 6 itens cabem. */
