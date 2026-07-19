@@ -17,3 +17,5 @@ Desenvolver protótipos de frontend **mobile-first**, baseados em grid, utilizan
 - NÃO utilizar gradientes (`linear-gradient`, `radial-gradient`, `conic-gradient` ou equivalentes).
 - NÃO utilizar shadows
 - NÃO definir `background`, `background-color` ou qualquer cor de fundo em elementos de superfície (`surface`). A cor do fundo sempre será `--color-bg`, por isso todos elementos haverá bordas (linhas) para separar os elementos.
+- NÃO utilizar sombras (`box-shadow`, `filter: drop-shadow()` ou equivalentes).
+- NÃO utilizar cantos arredondados (`border-radius`). Todos os componentes DEVEM possuir cantos retos (`border-radius: 0`).

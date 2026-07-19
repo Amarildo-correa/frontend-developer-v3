@@ -22,5 +22,37 @@
         <link rel="stylesheet" href="style.css" />
     </head>
 
-    <body></body>
+    <body>
+        <!-- Navbar inferior fixa: reaproveita .mosaico + .mosaico__bloco.
+             O último bloco (--mais) só aparece quando os 8 não cabem. -->
+        <nav class="mosaico mosaico--navbar" aria-label="Navegação principal">
+            <button type="button" class="mosaico__bloco" aria-label="Início">
+                <i class="bi bi-house"></i>
+            </button>
+            <button type="button" class="mosaico__bloco" aria-label="Buscar">
+                <i class="bi bi-search"></i>
+            </button>
+            <button type="button" class="mosaico__bloco" aria-label="Explorar">
+                <i class="bi bi-compass"></i>
+            </button>
+            <button type="button" class="mosaico__bloco" aria-label="Criar">
+                <i class="bi bi-plus-square"></i>
+            </button>
+            <button type="button" class="mosaico__bloco" aria-label="Notificações">
+                <i class="bi bi-bell"></i>
+            </button>
+            <button type="button" class="mosaico__bloco" aria-label="Mensagens">
+                <i class="bi bi-chat"></i>
+            </button>
+            <button type="button" class="mosaico__bloco" aria-label="Salvos">
+                <i class="bi bi-bookmark"></i>
+            </button>
+            <button type="button" class="mosaico__bloco" aria-label="Perfil">
+                <i class="bi bi-person-circle"></i>
+            </button>
+            <button type="button" class="mosaico__bloco mosaico__bloco--mais" aria-label="Mais opções">
+                <i class="bi bi-three-dots-vertical"></i>
+            </button>
+        </nav>
+    </body>
 </html>
