@@ -17,6 +17,10 @@
        Garante que o quadrado nunca fique menor que o conteúdo. */
     --bloco-min: calc(var(--icon-size) + var(--bloco-padding) * 2);
 
+    /* Largura máxima da navbar = maior smartphone atual (iPhone 16 Pro Max =
+       440px). Acima disso ela para de esticar e ancora à esquerda. */
+    --navbar-max: 27.5rem;
+
     /* Safe areas (notch/Dynamic Island/home indicator no iOS; edge-to-edge no
        Chrome Android) — resolvem para 0px em telas sem essas áreas, então não
        afetam o layout padrão. Fallback 0px explícito: env() com var. inválida
@@ -85,24 +89,19 @@ body {
    Única troca no grid: auto-fill vira 6 colunas fixas. */
 .mosaico--navbar {
     position: fixed;
-    /* largura total, colada no rodapé; permanece visível durante o scroll */
-    inset: auto 0 0 0;
+    /* ancorada no canto inferior esquerdo; permanece visível durante o scroll.
+       Sem right: a largura é limitada pelo max-width, iniciando pela esquerda. */
+    inset: auto auto 0 0;
     grid-template-columns: repeat(6, 1fr);
+    /* Acima do maior smartphone atual as 6 colunas param de esticar, evitando
+       a navbar gigante no desktop. Abaixo disso a largura cai para 100% e os
+       breakpoints reduzem colunas quando --bloco-min não é respeitado. */
+    max-width: var(--navbar-max);
     z-index: var(--z-sticky);
     background: var(--color-bg);
     /* respeita o home indicator (iOS Safari / Chrome Android): a faixa da
        safe area recebe --color-bg em vez de sobrepor os botões */
     padding-bottom: var(--safe-area-bottom);
-}
-
-/* Moldura accent contornando a navbar inteira, igual ao .mosaico.
-   O próprio elemento fixed é o bloco de contenção do ::after (inset: 0). */
-.mosaico--navbar::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border: 1px solid var(--color-accent);
-    pointer-events: none;
 }
 
 /* Os botões reaproveitam .mosaico__bloco; aqui só neutralizamos a aparência
@@ -169,9 +168,10 @@ body {
    A altura da navbar = largura de uma coluna (blocos 1:1) = largura total ÷
    colunas. Como padding-bottom em % resolve contra a largura do container,
    "100% / colunas" reproduz exatamente essa altura, mais a safe area.
-   Espelha os mesmos breakpoints do grid. */
+   Espelha os mesmos breakpoints do grid. Acima do limiar a navbar tem largura
+   fixa (--navbar-max), então a altura de um bloco é --navbar-max ÷ 6. */
 main {
-    padding-bottom: calc(100% / 6 + var(--safe-area-bottom));
+    padding-bottom: calc(var(--navbar-max) / 6 + var(--safe-area-bottom));
 }
 
 @media (max-width: 25.4375rem) {
