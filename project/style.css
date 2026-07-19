@@ -82,12 +82,12 @@ body {
 
 /* Navbar inferior fixa — reaproveita toda a lógica de grid do .mosaico:
    mesmos tokens, mesma estratégia de bordas sem duplicação e blocos 1:1.
-   Única troca no grid: auto-fill vira 8 colunas fixas. */
+   Única troca no grid: auto-fill vira 6 colunas fixas. */
 .mosaico--navbar {
     position: fixed;
     /* largura total, colada no rodapé; permanece visível durante o scroll */
     inset: auto 0 0 0;
-    grid-template-columns: repeat(8, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     z-index: var(--z-sticky);
     background: var(--color-bg);
     /* respeita o home indicator (iOS Safari / Chrome Android): a faixa da
@@ -124,42 +124,22 @@ body {
 }
 
 /* ─ Comportamento responsivo ──────────────────────────────────────────────
-   8 colunas exigem 8 × --bloco-min (4.25rem) = 34rem. Quando a viewport não
+   6 colunas exigem 6 × --bloco-min (4.25rem) = 25.5rem. Quando a viewport não
    comporta esse mínimo, reduzimos as colunas para quantas cabem e revelamos
    o botão "mais" (bi-three-dots-vertical) como último item; o excedente fica
    oculto. Cada breakpoint = n × 4.25rem − 1px, na ordem largo → estreito
    (o mais estreito vence a cascata; os display:none são aditivos). */
-
-/* < 34rem → 7 colunas: 6 itens + mais */
-@media (max-width: 33.9375rem) {
-    .mosaico--navbar {
-        grid-template-columns: repeat(7, 1fr);
-    }
-    .mosaico__bloco--mais {
-        display: flex;
-    }
-    .mosaico--navbar .mosaico__bloco:nth-child(7),
-    .mosaico--navbar .mosaico__bloco:nth-child(8) {
-        display: none;
-    }
-}
-
-/* < 29.75rem → 6 colunas: 5 itens + mais */
-@media (max-width: 29.6875rem) {
-    .mosaico--navbar {
-        grid-template-columns: repeat(6, 1fr);
-    }
-    .mosaico--navbar .mosaico__bloco:nth-child(6) {
-        display: none;
-    }
-}
 
 /* < 25.5rem → 5 colunas: 4 itens + mais */
 @media (max-width: 25.4375rem) {
     .mosaico--navbar {
         grid-template-columns: repeat(5, 1fr);
     }
-    .mosaico--navbar .mosaico__bloco:nth-child(5) {
+    .mosaico__bloco--mais {
+        display: flex;
+    }
+    .mosaico--navbar .mosaico__bloco:nth-child(5),
+    .mosaico--navbar .mosaico__bloco:nth-child(6) {
         display: none;
     }
 }
@@ -171,5 +151,43 @@ body {
     }
     .mosaico--navbar .mosaico__bloco:nth-child(4) {
         display: none;
+    }
+}
+
+/* < 17rem → 3 colunas: 2 itens + mais */
+@media (max-width: 16.9375rem) {
+    .mosaico--navbar {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    .mosaico--navbar .mosaico__bloco:nth-child(3) {
+        display: none;
+    }
+}
+
+/* ─ Reserva de espaço para o conteúdo rolável ─────────────────────────────
+   A navbar é fixed (fora do fluxo), então o conteúdo passaria por baixo dela.
+   A altura da navbar = largura de uma coluna (blocos 1:1) = largura total ÷
+   colunas. Como padding-bottom em % resolve contra a largura do container,
+   "100% / colunas" reproduz exatamente essa altura, mais a safe area.
+   Espelha os mesmos breakpoints do grid. */
+main {
+    padding-bottom: calc(100% / 6 + var(--safe-area-bottom));
+}
+
+@media (max-width: 25.4375rem) {
+    main {
+        padding-bottom: calc(100% / 5 + var(--safe-area-bottom));
+    }
+}
+
+@media (max-width: 21.1875rem) {
+    main {
+        padding-bottom: calc(100% / 4 + var(--safe-area-bottom));
+    }
+}
+
+@media (max-width: 16.9375rem) {
+    main {
+        padding-bottom: calc(100% / 3 + var(--safe-area-bottom));
     }
 }
