@@ -48,7 +48,6 @@ body {
 }
 
 .mosaico {
-    position: relative; /* referência para a moldura ::after */
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(var(--bloco-min), 1fr));
     width: 100%;
@@ -57,17 +56,6 @@ body {
        sem bordas duplicadas ao se encostarem. */
     border-top: 1px solid var(--color-line);
     border-left: 1px solid var(--color-line);
-}
-
-/* Moldura de destaque contornando o mosaico inteiro, SOBREPOSTA às linhas
-   cinza do perímetro. Como pinta depois dos blocos e fica com pointer-events
-   desligado, a moldura acent fica acima de tudo sem bloquear interações. */
-.mosaico::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border: 1px solid var(--color-accent);
-    pointer-events: none;
 }
 
 .mosaico__bloco {

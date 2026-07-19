@@ -15,4 +15,5 @@ Desenvolver protótipos de frontend **mobile-first**, baseados em grid, utilizan
 
 - Todos os arquivos `.html` DEVEM compartilhar exclusivamente os estilos definidos em `@project/css`.
 - NÃO utilizar gradientes (`linear-gradient`, `radial-gradient`, `conic-gradient` ou equivalentes).
+- NÃO utilizar shadows
 - NÃO definir `background`, `background-color` ou qualquer cor de fundo em elementos de superfície (`surface`). A cor do fundo sempre será `--color-bg`, por isso todos elementos haverá bordas (linhas) para separar os elementos.
