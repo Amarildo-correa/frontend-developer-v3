@@ -31,17 +31,22 @@
     /* Tamanho de texto de referência em `rem`, ou seja, relativo à fonte-raiz do navegador. Impacto: se a pessoa aumentar o tamanho de fonte nas configurações do sistema/navegador, o layout acompanha — o que não aconteceria com `px`. */
     --icon-size: 1.25rem;
     /* fonte do ícone */
-    --bloco-padding: 1.5rem;
-    /* respiro ao redor do ícone */
-    /* Largura mínima da célula = ícone + respiro dos dois lados.
-       Garante que o quadrado nunca fique menor que o conteúdo. */
-    --bloco-min: calc(var(--icon-size) + var(--bloco-padding) * 2);
-    /* 1.25rem + 3rem = 4.25rem. `calc()` deriva a medida em vez de repetir um valor mágico, então mexer no ícone ou no padding recalcula tudo sozinho. Impacto: o `auto-fill` do grid usa esse piso para decidir quantas colunas cabem, e o conteúdo nunca é espremido. */
+    --bloco-touch-min: 2.75rem;
+    /* 44px — piso mínimo de alvo de toque (WCAG 2.5.5). Nenhuma célula do mosaico pode resolver abaixo disso, sob pena de o alvo tocável ficar pequeno demais para dedos/mira reduzida. */
+    --bloco-touch-max: 3.575rem;
+    /* 57.2px — teto da faixa de toque (44px × 1.30). Acima disso a célula já não conta mais como "alvo mínimo", então o auto-fill deve abrir mais uma coluna antes de deixar a célula crescer além desse valor. */
+    --bloco-padding: 1rem;
+    /* respiro ao redor do ícone — reduzido de 1.5rem para 1rem porque o teto de toque (57.2px) é mais apertado que a largura livre anterior: (57.2px − 20px de ícone) / 2 = 18.6px de respiro por lado, o máximo que ainda cabe sem estourar --bloco-touch-max. */
+    /* Largura mínima da célula deriva do piso de toque, não do ícone + padding:
+       a faixa de toque (44–57.2px) passa a ser o contrato dominante do mosaico. */
+    --bloco-min: var(--bloco-touch-min);
+    /* Antes calculado a partir de ícone+padding; agora é o piso WCAG diretamente, para que o `auto-fill` nunca abra uma coluna mais estreita que 44px. Impacto: o cálculo de colunas do grid passa a obedecer à acessibilidade de toque, não apenas ao espaço do ícone. */
 
-    /* Largura máxima da navbar = maior smartphone atual (iPhone 16 Pro Max =
-       440px). Acima disso ela para de esticar e ancora à esquerda. */
-    --navbar-max: 27.5rem;
-    /* 27.5rem = 440px na raiz padrão de 16px. Escolhido como teto porque a navbar é um padrão móvel; esticá-la num monitor de 27" produziria botões absurdamente grandes. Impacto: no desktop a grade de botões congela nessa largura e o restante da faixa fica vazio. */
+    /* Largura máxima da navbar = 6 colunas no teto da faixa de toque
+       (6 × 3.575rem = 21.45rem = 343.2px). Acima disso a navbar para de
+       esticar e ancora à esquerda. */
+    --navbar-max: 21.45rem;
+    /* 21.45rem = 343.2px = 6 × 57.2px. O teto deriva diretamente do limite máximo de 6 colunas no tamanho de toque mais largo, e não mais do maior smartphone físico. Impacto: no desktop a grade de botões congela em 343.2px e o restante da faixa fica vazio. */
 
     /* Safe areas (notch/Dynamic Island/home indicator no iOS; edge-to-edge no
        Chrome Android) — resolvem para 0px em telas sem essas áreas, então não
