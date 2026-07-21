@@ -6,7 +6,29 @@
      • .mosaico--navbar    → grade de 6 botões, aninhada na faixa .navbar (fixa,
                              100% da largura, dona da moldura em --color-line)
    Invariantes: (1) todo bloco é quadrado; (2) toda linha da grade tem 1px.
-   Spec normativa completa em ../DESIGN.md.
+
+   ─ Três regimes de largura (WCAG 2.5.5 — faixa de alvo de toque 44–57.2px) ──
+   Tanto .mosaico quanto .mosaico--navbar atravessam os mesmos três regimes:
+
+     Regime A — < 264px: auto-fill livre, sem teto explícito. A própria
+       mecânica do minmax(piso, 1fr) já mantém a célula dentro da faixa de
+       toque (ver comentário em .mosaico).
+     Regime B — 264–440px: trava em --lock-cols (6) colunas. Como a largura
+       cresce e o número de colunas não, a célula estica além do teto de +30%
+       (57.2px) até atingir 73.33px em 440px — a EXCEÇÃO que o requisito
+       autoriza explicitamente só nesta janela.
+     Regime C — > 440px: destrava. auto-fill retoma, mas agora com um teto
+       FIXO em --bloco-max (56px, escolha deliberada — ver token). Acima de
+       440px a .navbar também deixa de ser uma faixa inferior e vira um rail
+       lateral fixo, com os itens empilhados verticalmente.
+
+   A transição B→C (440px → 441px) tem um salto visível e intencional:
+   73.33px → 56px. Não é o mesmo --bloco-max do pico de B — é uma escolha de
+   design separada, então a continuidade entre os dois regimes NÃO é uma
+   invariante deste sistema.
+
+   Spec normativa em ../DESIGN.md pode estar desatualizada após esta
+   refatoração — revisar antes de usá-la como referência.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Tokens */
@@ -30,49 +52,63 @@
     --font-size-base: 1rem;
     /* Tamanho de texto de referência em `rem`, ou seja, relativo à fonte-raiz do navegador. Impacto: se a pessoa aumentar o tamanho de fonte nas configurações do sistema/navegador, o layout acompanha — o que não aconteceria com `px`. */
     --icon-size: 1.25rem;
-    /* fonte do ícone */
-    --bloco-padding: 1.5rem;
-    /* respiro ao redor do ícone */
-    /* Largura mínima da célula = ícone + respiro dos dois lados.
-       Garante que o quadrado nunca fique menor que o conteúdo. */
-    --bloco-min: calc(var(--icon-size) + var(--bloco-padding) * 2);
-    /* 1.25rem + 3rem = 4.25rem. `calc()` deriva a medida em vez de repetir um valor mágico, então mexer no ícone ou no padding recalcula tudo sozinho. Impacto: o `auto-fill` do grid usa esse piso para decidir quantas colunas cabem, e o conteúdo nunca é espremido. */
+    /* fonte do ícone, 20px */
 
-    /* Largura máxima da navbar = maior smartphone atual (iPhone 16 Pro Max =
-       440px). Acima disso ela para de esticar e ancora à esquerda. */
-    --navbar-max: 27.5rem;
-    /* 27.5rem = 440px na raiz padrão de 16px. Escolhido como teto porque a navbar é um padrão móvel; esticá-la num monitor de 27" produziria botões absurdamente grandes. Impacto: no desktop a grade de botões congela nessa largura e o restante da faixa fica vazio. */
+    /* ─ Faixa de alvo de toque (WCAG 2.5.5 Target Size) ───────────────────
+       --bloco-touch-min é o único piso que existe de fato como token: o teto
+       de +30% (44 × 1.3 = 57.2px) NÃO tem token próprio porque nada no código
+       calcula com ele — ele só documenta por que o Regime B tem permissão de
+       ultrapassá-lo (é a "exceção" citada no requisito). Declarar um token
+       que nada usa seria um valor órfão; por isso o número aparece em prosa
+       nos comentários onde é relevante, não como custom property. */
+    --bloco-touch-min: 2.75rem;
+    /* 44px — mínimo absoluto de alvo de toque acessível. Impacto: é o piso que TODO auto-fill deste arquivo usa para decidir quantas colunas cabem — nenhuma célula do sistema nasce menor que um alvo tocável com segurança. */
+
+    --bloco-padding: calc((var(--bloco-touch-min) - var(--icon-size)) / 2);
+    /* (44px − 20px) / 2 = 12px = 0.75rem. Respiro simétrico ao redor do ícone, dimensionado para o PISO da faixa de toque — é o maior padding que ainda cabe numa célula de 44px sem estourá-la. Impacto: em células maiores (regimes B/C) sobra mais respiro; o ícone nunca é cortado porque o piso é o pior caso. */
+
+    --bloco-min: var(--bloco-touch-min);
+    /* Piso da coluna nos três regimes. ATENÇÃO — diferente da regra antiga do DESIGN.md ("--bloco-min DEVE derivar de --icon-size + --bloco-padding"), aqui a acessibilidade (44px) manda mais que o conteúdo (20px de ícone): a derivação antiga vira folga, não garantia. DESIGN.md precisa ser atualizado para refletir esta inversão. */
+
+    --lock-cols: 6;
+    /* Número de colunas do Regime B — e também a contagem fixa de itens da navbar (6 botões de navegação). Um só token para as duas coisas porque são, semanticamente, o mesmo número por motivos diferentes: aqui é "quantas colunas a grade trava"; na navbar é "quantos itens o produto tem". */
+
+    --lock-viewport-max: 27.5rem;
+    /* 440px — limite superior do Regime B (bloco chega a 73.33px = 440/6) e largura máxima da grade da navbar em modo faixa inferior. Acima disso, o Regime C assume e a navbar vira rail lateral. NOTA: media queries não aceitam var(), então o breakpoint de troca de regime (441px = 27.5625rem, ver .mosaico e .navbar abaixo) é um literal separado — se este token mudar, os breakpoints em @media precisam ser recalculados manualmente. */
+
+    --bloco-max: 3.5rem;
+    /* 56px — teto FIXO do Regime C, escolha deliberada de design (não derivado de --bloco-touch-min × 1.3 = 57.2px). É intencionalmente diferente do pico do Regime B (73.33px): a transição 440px→441px tem um salto visível de propósito, recuando o bloco para perto do teto de toque em vez de perpetuar o tamanho excepcional do regime travado. Reaproveitado em dois lugares: teto de célula do .mosaico em Regime C E espessura do rail lateral da navbar acima de 440px — os dois assentam no mesmo valor de propósito. */
 
     /* Safe areas (notch/Dynamic Island/home indicator no iOS; edge-to-edge no
        Chrome Android) — resolvem para 0px em telas sem essas áreas, então não
        afetam o layout padrão. Fallback 0px explícito: env() com var. inválida
        (navegador sem suporte) cai nesse valor em vez de invalidar a regra. */
     --safe-area-top: env(safe-area-inset-top, 0px);
-    /* Altura da área obstruída no topo (notch/Dynamic Island). Declarado por simetria e uso futuro — hoje NÃO é consumido por nenhuma regra deste arquivo. Impacto atual: nenhum; serve como ponto de extensão documentado. */
+    /* Altura da área obstruída no topo (notch/Dynamic Island). Agora CONSUMIDO pela .navbar em modo rail lateral (ver media query de destravamento) — antes só declarado, sem uso; o rail vertical de altura total precisa respeitar esse recuo tanto quanto o modo faixa inferior respeita o de baixo. */
     --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-    /* Altura da barra de gestos ("home indicator") na base. É o único dos quatro efetivamente usado — pela .navbar e pelo padding do <main>. Impacto: impede que o dedo/indicador do sistema cubra os botões da navbar. */
+    /* Altura da barra de gestos ("home indicator") na base. Usado pela .navbar e pelo padding do <main> em modo faixa inferior. Impacto: impede que o dedo/indicador do sistema cubra os botões da navbar. */
     --safe-area-left: env(safe-area-inset-left, 0px);
-    /* Recuo lateral esquerdo em modo paisagem com notch. Também apenas declarado, sem consumo hoje. Impacto atual: nenhum. */
+    /* Recuo lateral esquerdo em modo paisagem com notch. Agora CONSUMIDO pela .navbar e pelo <main> em modo rail lateral (a navbar passa a ficar encostada na borda esquerda, então precisa do mesmo tipo de recuo que o modo faixa inferior dá à borda de baixo). */
     --safe-area-right: env(safe-area-inset-right, 0px);
-    /* Contraparte direita do anterior; igualmente não consumido no momento. Impacto atual: nenhum. */
+    /* Contraparte direita do anterior; ainda não consumido — o rail fica à esquerda, não à direita. Impacto atual: nenhum; ponto de extensão documentado. */
 
     /* Camada do header/rodapé "grudentos" (position: sticky) acima do
        conteúdo que rola por baixo. */
     --z-sticky: 10;
-    /* Nível de empilhamento nomeado. Usar um token em vez de espalhar `z-index: 9999` evita a "guerra de z-index", em que cada componente novo chuta um número maior. Impacto: a navbar fica acima do conteúdo rolável de forma previsível e auditável. */
+    /* Nível de empilhamento nomeado. Usar um token em vez de espalhar `z-index: 9999` evita a "guerra de z-index", em que cada componente novo chuta um número maior. Impacto: a navbar fica acima do conteúdo rolável de forma previsível e auditável, em qualquer orientação (faixa ou rail). */
 }
 
 *,
 *::before,
 *::after {
     box-sizing: border-box;
-    /* Faz `width`/`height` incluírem padding e borda no total, em vez de somá-los por fora (comportamento padrão `content-box`). Impacto crítico aqui: sem isso, o --bloco-padding de 1.5rem e a borda de 1px estourariam o quadrado e quebrariam o `aspect-ratio: 1`. */
+    /* Faz `width`/`height` incluírem padding e borda no total, em vez de somá-los por fora (comportamento padrão `content-box`). Impacto crítico aqui: sem isso, o --bloco-padding e a borda de 1px estourariam o quadrado e quebrariam o `aspect-ratio: 1`. */
     margin: 0;
     /* Zera as margens que o navegador aplica por padrão a <body>, <h1>, <p> etc. Impacto: elimina espaços fantasma e o colapso de margens, deixando o espaçamento inteiramente sob controle das regras do projeto. */
     padding: 0;
     /* Mesma ideia para o padding padrão (listas <ul>, <button>). Impacto: cada elemento começa "zerado", então todo respiro visível no layout foi decidido explicitamente. */
     -webkit-tap-highlight-color: transparent;
-    /* Remove o retângulo cinza/azul que o WebKit móvel pisca ao tocar num elemento clicável. Impacto: o toque nos botões da navbar fica sem aquele flash cinza destoante do tema escuro — o feedback visual passa a ser responsabilidade do CSS do projeto. */
+    /* Remove o retângulo cinza/azul que o WebKit móvel pisca ao tocar num elemento clicável. Impacto: o toque nos botões da navbar fica sem aquele flash cinza destoante do tema escuro — o feedback visual passa a ser responsabilidade explícita do :active abaixo. */
 }
 
 html,
@@ -91,8 +127,24 @@ body {
 .mosaico {
     display: grid;
     /* Ativa o CSS Grid, o modelo de layout bidimensional (linhas + colunas simultâneas). Impacto: os filhos passam a ser posicionados em células, o que é o que torna todo o mosaico possível. */
+
+    /* Regime A (< 264px): auto-fill puro, sem teto explícito.
+       `minmax(piso, 1fr)` é auto-limitante: com n colunas a célula mede
+       W ÷ n, e n só troca quando W cruza um múltiplo de 44px — então a
+       célula varia de 44px a (44 + 44/n)px:
+
+         3 colunas → 44,0 – 58,7px   (estouraria o teto de +30%)
+         4 colunas → 44,0 – 55,0px   ✓ dentro da faixa
+         5 colunas → 44,0 – 52,8px   ✓
+         n colunas → 44,0 – (44 + 44/n)px, cada vez mais apertado
+
+       A partir de 4 colunas (176px) o intervalo inteiro já cabe em
+       44–57.2px — o teto emerge da mecânica do grid, não precisa ser
+       imposto. É por isso que não há media query nem trava aqui: qualquer
+       trava impediria o auto-fill de abrir a próxima coluna e forçaria as
+       colunas existentes a esticar além do teto — exatamente o problema que
+       o Regime B assume deliberadamente, e só ele. */
     grid-template-columns: repeat(auto-fill, minmax(var(--bloco-min), 1fr));
-    /* Coração do mosaico responsivo, sem media query: `auto-fill` cria quantas colunas couberem; `minmax(--bloco-min, 1fr)` diz que cada coluna tem 4.25rem de piso e divide o espaço sobrando igualmente (`1fr`). Impacto: a quantidade de colunas muda sozinha conforme a largura da tela, e as colunas sempre esticam para preencher a linha sem deixar sobra. */
     width: 100%;
     /* Faz o container ocupar toda a largura disponível do pai. Impacto: dá ao `auto-fill` o espaço máximo para calcular colunas — sem isso a grade se encolheria ao conteúdo em alguns contextos. */
     /* O container fecha as arestas de cima e da esquerda; cada bloco cuida
@@ -102,6 +154,27 @@ body {
     /* Desenha a primeira linha horizontal da malha. Ela pertence ao container porque os blocos da primeira fila não têm vizinho acima para fornecê-la. Impacto: a grade fica visualmente fechada no topo. */
     border-left: 1px solid var(--color-line);
     /* Mesma lógica no eixo vertical: fecha a aresta esquerda que a primeira coluna não tem como herdar de um vizinho. Impacto: junto com a de cima, completa a moldura sem que nenhuma linha interna vire 2px. */
+}
+
+/* Regime B — trava em --lock-cols colunas: 264px a 440px. A largura cresce,
+   o número de colunas não, então cada célula estica: 44px em 264px, chegando
+   a 73.33px em 440px. É a exceção que o requisito autoriza explicitamente. */
+@media (min-width: 16.5rem) {
+    .mosaico {
+        grid-template-columns: repeat(var(--lock-cols), 1fr);
+        /* Impacto: acima de 264px a grade para de abrir colunas novas e passa a esticar as 6 existentes — visualmente mais denso, mas com um número de blocos estável e previsível nesta janela de largura. */
+    }
+}
+
+/* Regime C — destrava acima de 440px. auto-fill retoma, mas agora com teto
+   FIXO em --bloco-max (56px): diferente do Regime A, aqui o máximo da
+   minmax() é definido, então o auto-fill conta colunas usando esse teto em
+   vez do piso — e as células assentam exatamente nele, sem crescer mais. */
+@media (min-width: 27.5625rem) {
+    .mosaico {
+        grid-template-columns: repeat(auto-fill, minmax(var(--bloco-min), var(--bloco-max)));
+        /* Impacto: a partir daqui, telas maiores ganham mais colunas — nunca blocos maiores. Como o máximo é um comprimento fixo (não 1fr), a grade não estica para preencher a sobra: o excesso de largura fica como espaço vazio à direita, ancorando o mosaico à esquerda (mesmo padrão que a navbar já usa). */
+    }
 }
 
 .mosaico__bloco {
@@ -121,7 +194,7 @@ body {
     justify-content: center;
     /* Centraliza no eixo principal — horizontalmente na direção `row`. Impacto: combinado com o anterior, coloca o ícone no centro geométrico exato do quadrado. */
     padding: var(--bloco-padding);
-    /* Aplica o respiro de 1.5rem nos quatro lados. Impacto: além do apelo visual, é o que garante que a área tocável ao redor do ícone atinja um tamanho confortável para o dedo (diretriz de alvo de toque). */
+    /* Aplica o respiro derivado do piso de toque nos quatro lados (12px — ver token). Impacto: garante a área tocável ao redor do ícone mesmo na célula mínima de 44px; em células maiores (regimes B/C) esse respiro vira folga extra, não limite. */
     /* Só direita + inferior: a esquerda/topo vêm do vizinho anterior
        (ou do container na primeira coluna/linha). Evita a borda dupla. */
     border-right: 1px solid var(--color-line);
@@ -137,153 +210,193 @@ body {
     /* consome o mesmo token */
 }
 
-/* ─ Navbar inferior fixa ──────────────────────────────────────────────────
-   Dois elementos com papéis distintos:
-     • .navbar          → a FAIXA: fixa na base, ocupa 100% da largura e é a única
-                          dona da moldura completa (--color-line), do fundo e da
-                          safe area.
-     • .mosaico--navbar → a GRADE de botões dentro da faixa: reaproveita a lógica
-                          do .mosaico (blocos 1:1) e os breakpoints, limitada a
-                          --navbar-max à esquerda. Só contribui as divisórias
-                          verticais entre botões.
-   A moldura externa é responsabilidade exclusiva da faixa; a grade zera as arestas
-   que a duplicariam, preservando o invariante de 1px por linha (DESIGN.md, item 7). */
-.navbar {
-    position: fixed;
-    /* Tira a faixa do fluxo normal e a ancora ao viewport, não à página. Impacto: ela permanece imóvel enquanto o conteúdo rola por baixo — e, por estar fora do fluxo, deixa de reservar espaço, o que exige a compensação no <main> lá embaixo. */
-    /* estica de x=0 a x=100% (right: 0) e cola na base; permanece visível no
-       scroll. A moldura vai de ponta a ponta mesmo com os botões só à esquerda. */
-    inset: auto 0 0 0;
-    /* Atalho para top/right/bottom/left nessa ordem: `auto` no topo (a altura vem do conteúdo), 0 nos outros três. Impacto: a faixa gruda na base e estica de borda a borda horizontalmente, sem precisar declarar `width: 100%`. */
-    z-index: var(--z-sticky);
-    /* Coloca a faixa na camada de sobreposição definida no token. Impacto: garante que ela fique por cima do conteúdo rolável em vez de ser encoberta por elementos posicionados que aparecerem depois no HTML. */
-    background: var(--color-bg);
-    /* Repete o fundo da aplicação — obrigatório num elemento fixo, pois ele é opaco por cima do conteúdo. Impacto: sem isto, o texto rolando por baixo apareceria através da navbar. */
-    /* moldura completa de 1px em toda a faixa; a grade interna não redesenha
-       nenhuma dessas 4 arestas, então cada linha continua com 1px único. */
-    border: 1px solid var(--color-line);
-    /* Aplica a moldura nos quatro lados de uma vez. A faixa é a proprietária exclusiva dessa borda externa. Impacto: a navbar fica visualmente delimitada de ponta a ponta, inclusive na região à direita onde não há botões. */
-    /* respeita o home indicator (iOS Safari / Chrome Android): a faixa da
-       safe area recebe --color-bg em vez de sobrepor os botões */
-    padding-bottom: var(--safe-area-bottom);
-    /* Empurra o conteúdo da faixa para cima pela altura exata da barra de gestos do sistema. Impacto: em iPhones/Androids modernos, os botões não ficam sob o "home indicator"; em telas sem essa área o valor resolve para 0px e nada muda. */
+/* ─ Estados interativos do bloco ──────────────────────────────────────────
+   Escopados a `button.mosaico__bloco`, não a `.mosaico__bloco` genérico: no
+   mosaico de preenchimento (index.html) os blocos são <div> decorativos, sem
+   nenhuma interação — aplicar foco/toque a eles sugeriria clicabilidade que
+   não existe. Só os botões da navbar (feed.html) são de fato interativos.
+
+   O reset lá em cima apagou os dois retornos visuais que o navegador dá de
+   graça: `-webkit-tap-highlight-color: transparent` matou o flash de toque e
+   `appearance: none` (na navbar) mata o relevo nativo do <button>. Estas duas
+   regras devolvem esse retorno, uma para cada modalidade de entrada. */
+
+/* WCAG 2.4.7 (Focus Visible) — foco para quem navega por teclado ou switch
+   access. `:focus-visible` (e não `:focus`) faz o anel aparecer só na
+   navegação por teclado, sem piscar a cada toque ou clique de mouse. */
+button.mosaico__bloco:focus-visible {
+    outline: 2px solid var(--color-accent);
+    /* Cor de destaque, a única "viva" da paleta — contraste garantido contra o fundo escuro e as linhas discretas da malha. */
+    outline-offset: -2px;
+    /* Offset negativo puxa o anel para DENTRO da célula. Impacto: preserva a malha de 1px — um outline externo vazaria sobre os blocos vizinhos e engrossaria visualmente as divisórias compartilhadas. */
+    position: relative;
+    /* Cria contexto de posicionamento para o z-index funcionar num item de grid estático. */
+    z-index: 1;
+    /* Eleva o bloco focado acima dos irmãos, para o anel não ser recortado pelas bordas dos vizinhos. */
 }
 
-/* Grade de botões — reaproveita toda a lógica de grid do .mosaico (mesmos tokens,
-   blocos 1:1) e mantém os breakpoints responsivos abaixo. Fica no fluxo dentro da
-   faixa, ancorada à esquerda pelo max-width. */
+/* Feedback de toque — devolve a percepção de "toque registrado" que o
+   tap-highlight nativo dava antes do reset. */
+button.mosaico__bloco {
+    transition: opacity 0.1s ease;
+    /* Declarada na base (não em :active) para animar tanto a entrada quanto a saída do estado pressionado. */
+}
+
+@media (prefers-reduced-motion: reduce) {
+    button.mosaico__bloco {
+        transition: none;
+        /* Quem pede menos movimento recebe a troca de opacidade instantânea — sem fade, sem transição de nenhum tipo. */
+    }
+}
+
+button.mosaico__bloco:active {
+    opacity: 0.7;
+    /* Escurece o bloco inteiro (ícone junto) enquanto pressionado. Confirmação imediata do toque sem alterar layout — opacity não dispara reflow, então a malha de 1px não se mexe. */
+}
+
+/* ─ Navbar — faixa inferior fixa / rail lateral ───────────────────────────
+   Dois elementos com papéis distintos, em duas orientações possíveis:
+     • .navbar          → o CONTAINER: fixo, dono da moldura completa
+                          (--color-line), do fundo e das safe areas.
+     • .mosaico--navbar → a GRADE de botões dentro do container: reaproveita
+                          a lógica do .mosaico (blocos 1:1).
+
+   Até 440px, .navbar é uma faixa inferior (100% da largura, botões em linha).
+   Acima de 440px — mesmo limiar em que o Regime C destrava o .mosaico — ela
+   vira um rail lateral esquerdo, com os itens empilhados verticalmente.
+
+   A moldura externa é responsabilidade exclusiva do container; a grade zera
+   as arestas que a duplicariam, preservando o invariante de 1px por linha. */
+.navbar {
+    position: fixed;
+    /* Tira o container do fluxo normal e o ancora ao viewport, não à página. Impacto: permanece imóvel enquanto o conteúdo rola por baixo/ao lado — e, por estar fora do fluxo, deixa de reservar espaço, o que exige a compensação no <main> lá embaixo. */
+    inset: auto 0 0 0;
+    /* Modo faixa inferior (padrão): estica de x=0 a x=100% e cola na base. Sobrescrito para rail lateral acima de 440px. */
+    z-index: var(--z-sticky);
+    /* Coloca o container na camada de sobreposição definida no token. Impacto: garante que fique por cima do conteúdo rolável em qualquer orientação. */
+    background: var(--color-bg);
+    /* Repete o fundo da aplicação — obrigatório num elemento fixo, pois ele é opaco por cima do conteúdo. Impacto: sem isto, o conteúdo rolando por baixo/ao lado apareceria através do container. */
+    /* moldura completa de 1px; a grade interna não redesenha nenhuma dessas
+       4 arestas, então cada linha continua com 1px único, em qualquer
+       orientação. */
+    border: 1px solid var(--color-line);
+    /* Aplica a moldura nos quatro lados de uma vez. O container é o proprietário exclusivo dessa borda externa. */
+    padding-bottom: var(--safe-area-bottom);
+    /* Modo faixa inferior: respeita o home indicator (iOS Safari / Chrome Android) — a faixa da safe area recebe --color-bg em vez de sobrepor os botões. Zerado no modo rail lateral (ver media query abaixo), onde a safe area relevante passa a ser a lateral. */
+}
+
+/* Grade de botões — reaproveita toda a lógica de grid do .mosaico. Em modo
+   faixa inferior fica no fluxo dentro do container, ancorada à esquerda pelo
+   max-width. */
 .mosaico--navbar {
-    grid-template-columns: repeat(6, 1fr);
-    /* Sobrescreve o `auto-fill` herdado de .mosaico por uma contagem fixa de 6 colunas iguais. Impacto: a navbar tem sempre 6 botões visíveis (até os breakpoints reduzirem), em vez de um número variável decidido pelo espaço disponível. */
-    /* Acima do maior smartphone atual as 6 colunas param de esticar, evitando
-       a grade gigante no desktop. Abaixo disso a largura cai para 100% e os
-       breakpoints reduzem colunas quando --bloco-min não é respeitado. */
-    max-width: var(--navbar-max);
-    /* Teto de 27.5rem para a grade. Como `width: 100%` vem de .mosaico, ela ocupa tudo em telas menores e trava nesse valor nas maiores. Impacto: no desktop os botões mantêm proporção de celular e a grade fica ancorada à esquerda da faixa. */
-    /* A moldura externa vem da .navbar; zera o topo/esquerda que a grade herda
-       de .mosaico para não sobrepor a linha da faixa (evita borda de 2px). */
+    grid-template-columns: repeat(var(--lock-cols), 1fr);
+    /* Sobrescreve o `auto-fill` herdado de .mosaico por uma contagem fixa de --lock-cols (6) colunas iguais — a navbar tem um número de itens definido pelo produto, não pelo espaço. Impacto: os 6 botões permanecem visíveis até os breakpoints abaixo reduzirem a contagem. */
+    max-width: var(--lock-viewport-max);
+    /* Teto defensivo de 440px. NA PRÁTICA nunca chega a engatar: o container (.navbar) tem 1px de borda de cada lado, então seu content box mede no máximo 440−2=438px enquanto permanece em modo faixa inferior — o modo rail lateral assume exatamente em 441px, antes que a grade pudesse precisar deste teto. Mantido mesmo assim para documentar a intenção e blindar contra mudanças futuras nos breakpoints (ver nota em --lock-viewport-max sobre a dessincronia possível entre token e media query literal). */
     border-top: 0;
-    /* Anula a borda superior que .mosaico definiria, porque a .navbar já desenha essa linha. Impacto: evita duas linhas de 1px empilhadas formando um traço de 2px no topo da faixa. */
+    /* Anula a borda superior que .mosaico definiria, porque o container já desenha essa linha. Impacto: evita duas linhas de 1px empilhadas formando um traço de 2px no topo/lateral do container. */
     border-left: 0;
-    /* Mesma anulação na aresta esquerda, também já coberta pela moldura da .navbar. Impacto: preserva o invariante de 1px por linha na lateral esquerda. */
+    /* Mesma anulação na aresta esquerda, também já coberta pela moldura do container. */
 }
 
 /* Os botões reaproveitam .mosaico__bloco; aqui só neutralizamos a aparência
-   nativa do <button>, preservando a borda direita (divisória entre botões). */
+   nativa do <button>. As arestas específicas de cada orientação (divisória
+   vertical vs. horizontal) são tratadas nos blocos seguintes. */
 .mosaico--navbar .mosaico__bloco {
     appearance: none;
     /* remove o estilo nativo do <button> (relevo, gradiente) */
     -webkit-appearance: none;
     /* mesma coisa em Safari/WebKit antigos */
     background: none;
-    /* descarta o cinza padrão do botão; o fundo vem da navbar */
+    /* descarta o cinza padrão do botão; o fundo vem do container */
     color: inherit;
     /* ícone volta a herdar a cor do tema, não o preto do sistema */
     font: inherit;
     /* zera a fonte menor que o <button> aplica por conta própria */
     cursor: pointer;
     /* mantém o ponteiro de "clicável" que o reset apagaria */
-    /* Topo/esquerda: viriam do vizinho — não há vizinho numa faixa de uma linha.
-       Inferior: agora é a borda de baixo da .navbar. Só a direita permanece e
-       desenha as divisórias verticais (inclusive a do último botão em --navbar-max). */
     border-top: 0;
-    /* Remove a aresta superior: numa faixa de linha única não existe fila acima para compartilhá-la, e a .navbar já fecha o topo. Impacto: evita linha duplicada acima dos botões. */
+    /* Nenhuma orientação tem vizinho acima (linha/coluna única): o container já fecha essa aresta. */
     border-left: 0;
-    /* Remove a aresta esquerda de cada botão, já que a divisória entre dois botões é fornecida pela `border-right` do botão anterior. Impacto: mantém as divisórias com exatamente 1px. */
+    /* Modo faixa inferior: a divisória entre botões vem do border-right do anterior, não de um border-left próprio. Modo rail lateral: não há vizinho à esquerda (coluna única), o container fecha essa aresta. */
     border-bottom: 0;
-    /* Remove a aresta inferior, hoje responsabilidade da borda de baixo da .navbar. Impacto: a base da faixa não ganha um traço de 2px. */
+    /* Modo faixa inferior: a base agora é a borda inferior do container. Modo rail lateral: sobrescrito abaixo para virar a divisória entre itens empilhados. */
 }
 
-/* A direita só pode ficar por conta do próprio bloco quando existe folga entre
-   o último botão e a borda da .navbar — ou seja, acima de --navbar-max, onde
-   .mosaico--navbar para de esticar e sobra espaço vazio à direita. Abaixo
-   disso, a grade tem width:100% e enche exatamente a .navbar sem folga, então
-   o border-right do último bloco encostaria direto na borda da faixa,
-   somando dois traços de 1px (2px). Por isso ele é zerado por padrão e só
-   reativado pela media query abaixo, no regime com folga. */
+/* Modo faixa inferior — a grade sempre preenche exatamente o content box do
+   container (nunca há folga: ver nota em max-width acima), então o
+   border-right do último item visível encostaria direto na borda do
+   container, somando dois traços de 1px. Por isso é zerado incondicionalmente
+   — ao contrário do Regime C do .mosaico geral, aqui NÃO existe uma media
+   query de reativação, porque a folga nunca ocorre neste modo. */
 .mosaico--navbar .mosaico__bloco:last-child,
 .mosaico--navbar .mosaico__bloco:nth-child(6) {
     border-right: 0;
-    /* :last-child cobre o botão "mais" (sempre o último item visível quando aparece, abaixo de 25.4375rem — sempre dentro do regime sem folga). :nth-child(6) cobre o 6º botão no intervalo 25.4375rem–27.5rem, onde ele já é o último visível mas a grade ainda não abriu folga; a media query abaixo reativa a borda dele só a partir de --navbar-max. */
+    /* :last-child cobre o botão "mais" (último item visível quando aparece, abaixo de 265px). :nth-child(6) cobre o 6º botão quando os 6 itens diretos estão visíveis (265px a 440px). */
 }
 
-@media (min-width: 27.5rem) {
-    .mosaico--navbar .mosaico__bloco:nth-child(6) {
-        border-right: 1px solid var(--color-line);
-        /* Acima de --navbar-max (27.5rem) a grade trava e sobra espaço vazio até a borda da .navbar: aqui o border-right do 6º botão fecha a grade sem tocar a borda da faixa, então não duplica nada. */
-    }
-}
-
-/* Botão de overflow: oculto enquanto os 6 itens cabem. */
+/* Botão de overflow: oculto enquanto os itens cabem. */
 .mosaico__bloco--mais {
     display: none;
-    /* Retira o botão "mais" do layout por completo (não ocupa célula do grid). Impacto: no estado padrão, com espaço para os 6 itens, o overflow simplesmente não existe; os media queries abaixo o reativam quando necessário. */
+    /* Retira o botão "mais" do layout por completo (não ocupa célula do grid). Impacto: no estado padrão, com espaço para os 6 itens, o overflow simplesmente não existe; os media queries abaixo o reativam quando necessário. NOTA: esta regra nunca é revertida no modo rail lateral (> 440px) — nessa largura os 6 itens sempre cabem na horizontal, o overflow ali seria por ALTURA (viewport curto), o que este sistema não trata. */
 }
 
-/* ─ Comportamento responsivo ──────────────────────────────────────────────
-   6 colunas exigem 6 × --bloco-min (4.25rem) = 25.5rem. Quando a viewport não
-   comporta esse mínimo, reduzimos as colunas para quantas cabem e revelamos
-   o botão "mais" (bi-three-dots-vertical) como último item; o excedente fica
-   oculto. Cada breakpoint = n × 4.25rem − 1px, na ordem largo → estreito
-   (o mais estreito vence a cascata; os display:none são aditivos). */
+/* ─ Comportamento responsivo da navbar (modo faixa inferior) ──────────────
+   Diferente do .mosaico geral, a navbar não pode abrir colunas novas: a
+   contagem de itens é fixa em --lock-cols (6). Quando a largura não sustenta
+   6 células no piso de toque, reduzimos a contagem e revelamos o botão
+   "mais" como último item; o excedente fica oculto.
 
-/* < 25.5rem → 5 colunas: 4 itens + mais */
-@media (max-width: 25.4375rem) {
+   Cálculo do limiar: n colunas exigem n × 44px de trilhas, MAIS os 2px de
+   borda que o container consome de cada lado — a grade vive dentro do
+   content box do container, não do viewport. Daí n × 44px + 2px, e o
+   breakpoint fica 1px abaixo disso:
+
+     6 colunas → 264 + 2 = 266px  →  breakpoint em 265px = 16.5625rem
+     5 colunas → 220 + 2 = 222px  →  breakpoint em 221px = 13.8125rem
+     4 colunas → 176 + 2 = 178px  →  breakpoint em 177px = 11.0625rem
+
+   Sem esses 2px as células ficariam abaixo do mínimo WCAG por uma fração de
+   pixel. Ordem largo → estreito: o mais estreito vence a cascata e os
+   display:none são aditivos. */
+
+/* < 266px → 5 colunas: 4 itens + mais */
+@media (max-width: 16.5625rem) {
     .mosaico--navbar {
         grid-template-columns: repeat(5, 1fr);
-        /* Reduz a grade para 5 colunas quando 6 blocos de 4.25rem não cabem mais. Impacto: os botões mantêm o tamanho mínimo confortável de toque em vez de encolherem abaixo do alvo acessível. */
+        /* Reduz para 5 colunas quando 6 células de 44px não cabem mais no content box do container. */
     }
 
     .mosaico__bloco--mais {
         display: flex;
-        /* Revela o botão de overflow, restaurando o `display: flex` que .mosaico__bloco usa para centralizar o ícone (por isso `flex`, não `block`). Impacto: surge o acesso aos itens que serão escondidos logo abaixo. */
+        /* Revela o botão de overflow, restaurando o `display: flex` que .mosaico__bloco usa para centralizar o ícone (por isso `flex`, não `block`). */
     }
 
     .mosaico--navbar .mosaico__bloco:nth-child(5),
     .mosaico--navbar .mosaico__bloco:nth-child(6) {
         display: none;
-        /* Esconde o 5º e o 6º itens de navegação para liberar a última coluna ao botão "mais". Impacto: sobram 4 itens diretos + overflow, totalizando exatamente as 5 colunas disponíveis. */
+        /* Esconde o 5º e o 6º itens para liberar a última coluna ao botão "mais". Impacto: sobram 4 itens diretos + overflow, totalizando exatamente as 5 colunas disponíveis. */
     }
 }
 
-/* < 21.25rem → 4 colunas: 3 itens + mais */
-@media (max-width: 21.1875rem) {
+/* < 222px → 4 colunas: 3 itens + mais */
+@media (max-width: 13.8125rem) {
     .mosaico--navbar {
         grid-template-columns: repeat(4, 1fr);
-        /* Novo degrau: 4 colunas quando nem 5 blocos cabem no mínimo. Impacto: continua preservando o tamanho do alvo de toque à custa da quantidade de itens visíveis. */
+        /* Novo degrau, quando nem 5 células de 44px cabem. */
     }
 
     .mosaico--navbar .mosaico__bloco:nth-child(4) {
         display: none;
-        /* Esconde também o 4º item. Note que o 5º e o 6º já estão ocultos pelo bloco anterior — os media queries são cumulativos, pois esta faixa de largura também satisfaz a condição do breakpoint mais largo. Impacto: 3 itens + o botão "mais". */
+        /* Esconde também o 4º item. O 5º e o 6º já estão ocultos pelo bloco anterior — os media queries são cumulativos. Impacto: 3 itens + o botão "mais". */
     }
 }
 
-/* < 17rem → 3 colunas: 2 itens + mais */
-@media (max-width: 16.9375rem) {
+/* < 178px → 3 colunas: 2 itens + mais */
+@media (max-width: 11.0625rem) {
     .mosaico--navbar {
         grid-template-columns: repeat(3, 1fr);
-        /* Último degrau da grade: 3 colunas. Impacto: mesmo em telas extremamente estreitas (ou com zoom de texto alto) os botões nunca ficam menores que --bloco-min. */
+        /* Último degrau. RESSALVA: esta é a única fase em que o teto de +30% (57.2px) pode ser rompido — no topo dela (177px) a célula chega a 58,33px. Entre 172px e 177px as duas restrições ficam insatisfazíveis ao mesmo tempo (4 colunas dariam ~43px, abaixo do piso; 3 colunas dão ~58px, acima do teto), e a escolha deliberada é honrar o piso de acessibilidade. Impacto: excesso máximo de 1,13px, só alcançável sob zoom extremo. */
     }
 
     .mosaico--navbar .mosaico__bloco:nth-child(3) {
@@ -292,35 +405,84 @@ body {
     }
 }
 
-/* ─ Reserva de espaço para o conteúdo rolável ─────────────────────────────
-   A navbar é fixed (fora do fluxo), então o conteúdo passaria por baixo dela.
-   A altura da navbar = largura de uma coluna (blocos 1:1) = largura total ÷
-   colunas. Como padding-bottom em % resolve contra a largura do container,
-   "100% / colunas" reproduz exatamente essa altura, mais a safe area.
-   Espelha os mesmos breakpoints do grid. Acima do limiar a navbar tem largura
-   fixa (--navbar-max), então a altura de um bloco é --navbar-max ÷ 6. */
-main {
-    padding-bottom: calc(var(--navbar-max) / 6 + var(--safe-area-bottom));
-    /* Reserva, ao final do conteúdo, exatamente a altura da navbar travada em --navbar-max (largura ÷ 6 colunas = lado do quadrado) somada à safe area. Impacto: o último elemento da página consegue ser rolado até ficar totalmente visível, em vez de ficar preso sob a faixa fixa. */
+/* ─ Navbar em modo rail lateral (> 440px) ──────────────────────────────────
+   Mesmo limiar em que o .mosaico geral destrava para o Regime C: acima de
+   440px a navbar deixa de ser uma faixa inferior e vira um rail fixo à
+   esquerda, com os 6 itens empilhados verticalmente. Nesta largura os 6
+   itens sempre cabem (o botão "mais" permanece display:none por herança —
+   ver nota na regra dele), então não há redução de contagem aqui. */
+@media (min-width: 27.5625rem) {
+    .navbar {
+        inset: 0 auto 0 0;
+        /* top:0 right:auto bottom:0 left:0 — altura total do viewport, ancorado na borda esquerda. Substitui o `auto 0 0 0` do modo faixa inferior. */
+        width: calc(var(--bloco-max) + 2px);
+        /* 56px de célula + 1px de borda de cada lado = 58px. Mesmo --bloco-max do teto de célula do Regime C do .mosaico geral — os dois assentam no mesmo valor de propósito. */
+        padding-bottom: 0;
+        /* Zera a reserva de safe-area-bottom do modo faixa inferior: o rail não fica mais na borda de baixo, então essa área não é mais relevante para ele. */
+        padding-top: var(--safe-area-top);
+        /* Rail de altura total: agora é o topo que pode encostar numa área obstruída (notch em paisagem), então esse token — antes só declarado — passa a ser consumido de fato. */
+        padding-left: var(--safe-area-left);
+        /* Equivalente lateral do padding-bottom que o modo faixa inferior aplica embaixo: o rail encosta na borda esquerda, então precisa do mesmo tipo de recuo para não ficar sob a safe area. */
+    }
+
+    .mosaico--navbar {
+        grid-template-columns: 1fr;
+        /* Uma coluna só: os itens empilham verticalmente. A altura de cada "linha" continua vindo do aspect-ratio:1 do bloco (56px de largura → 56px de altura), então não é preciso declarar grid-template-rows. */
+    }
+
+    .mosaico--navbar .mosaico__bloco {
+        border-right: 0;
+        /* Sem colunas vizinhas, não há divisória vertical nenhuma — inclusive nos itens que tinham border-right no modo faixa inferior (o :nth-child(6) e o :last-child, sobrescritos aqui). */
+        border-bottom: 1px solid var(--color-line);
+        /* A divisória agora é horizontal, entre itens empilhados — o equivalente rotacionado 90° do border-right do modo faixa inferior. */
+    }
+
+    .mosaico--navbar .mosaico__bloco:last-child {
+        border-bottom: 0;
+        /* O último item empilhado não precisa de divisória própria: a borda inferior do rail (desenhada pelo .navbar) já fecha essa aresta. Mesma lógica anti-borda-dupla do modo faixa inferior, rotacionada. */
+    }
 }
 
-@media (max-width: 25.4375rem) {
+/* ─ Reserva de espaço para o conteúdo rolável ─────────────────────────────
+   No modo faixa inferior, a navbar é fixed (fora do fluxo) na base, então o
+   conteúdo passaria por baixo dela. Como os blocos são 1:1, a altura da
+   navbar = largura de uma coluna = largura da grade ÷ colunas. E como
+   padding-bottom em % resolve contra a LARGURA do container (mesmo no eixo
+   vertical), "100% / colunas" reproduz essa altura sem JavaScript. */
+main {
+    padding-bottom: calc(min(100%, var(--lock-viewport-max)) / var(--lock-cols) + var(--safe-area-bottom));
+    /* min(100%, --lock-viewport-max) reproduz o mesmo degrau que a grade da navbar sofre ao travar em 440px: abaixo desse ponto a navbar ocupa 100% da largura, acima ela congela. Sem o min(), a reserva usaria sempre os 73.33px do pico, sobrando espaço morto em telas mais estreitas onde a navbar é menor de fato. Impacto: o último elemento da página rola até ficar inteiramente visível, sem faixa vazia extra. */
+}
+
+@media (max-width: 16.5625rem) {
     main {
         padding-bottom: calc(100% / 5 + var(--safe-area-bottom));
-        /* Abaixo do teto, a navbar ocupa 100% da largura, então o lado do bloco é largura ÷ 5. O truque: `padding` percentual resolve contra a LARGURA do container, mesmo no eixo vertical — o que aqui é exatamente o que queremos. Impacto: a reserva acompanha a altura real da navbar sem JavaScript. */
+        /* Espelha o degrau de 5 colunas da navbar. */
     }
 }
 
-@media (max-width: 21.1875rem) {
+@media (max-width: 13.8125rem) {
     main {
         padding-bottom: calc(100% / 4 + var(--safe-area-bottom));
-        /* Mesmo cálculo para 4 colunas: com menos colunas cada bloco é mais largo e, sendo quadrado, mais alto — logo a reserva cresce. Impacto: mantém o espelhamento exato entre a altura da navbar e o espaço reservado. */
+        /* Espelha o degrau de 4 colunas. */
     }
 }
 
-@media (max-width: 16.9375rem) {
+@media (max-width: 11.0625rem) {
     main {
         padding-bottom: calc(100% / 3 + var(--safe-area-bottom));
-        /* Última correspondência, para 3 colunas — o caso de blocos mais altos e, portanto, maior reserva. Impacto: mesmo na tela mais estreita nenhum conteúdo fica permanentemente escondido sob a navbar. */
+        /* Espelha o degrau de 3 colunas — o caso de blocos mais altos e, portanto, maior reserva. */
+    }
+}
+
+/* No modo rail lateral, a reserva vertical do <main> deixa de fazer sentido
+   (a navbar não ocupa mais a base) e vira uma reserva HORIZONTAL, do mesmo
+   jeito que a navbar reserva a própria espessura (--bloco-max + 2px). */
+@media (min-width: 27.5625rem) {
+    main {
+        padding-bottom: 0;
+        /* Cancela a reserva de rodapé herdada da regra padrão acima — não há mais navbar na base. */
+        padding-left: calc(var(--bloco-max) + 2px + var(--safe-area-left));
+        /* Reserva a largura exata do rail (58px) mais a safe area esquerda, para o conteúdo não nascer por baixo dele. */
     }
 }
