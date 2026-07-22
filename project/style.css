@@ -1,26 +1,48 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    ESTILOS DO PROTÓTIPO — ESTADO ATUAL (PROJETO EM DESENVOLVIMENTO CONTÍNUO)
 
-   Este arquivo documenta a implementação de frontend COMO ELA ESTÁ HOJE — NÃO
-   um Design System fechado, definitivo ou imutável. O projeto está em
-   desenvolvimento contínuo: a arquitetura de frontend (organização das classes,
-   estratégia de grid, breakpoints, nomes, estrutura de HTML/CSS) PODE e DEVE ser
-   evoluída, refatorada ou reorganizada sempre que isso levar a uma solução mais
-   consistente, escalável ou de melhor qualidade para os prompts futuros. Nada
-   aqui deve ser tratado como barreira: sinta-se livre para alterar HTML e CSS e
-   para propor e implementar melhorias arquiteturais. O "como" da arquitetura
-   descrita abaixo é livre para evoluir.
+   ┌─ COMO LER ESTE ARQUIVO ─────────────────────────────────────────────────┐
+   │ Tudo que está documentado aqui descreve a implementação COMO ELA ESTÁ    │
+   │ HOJE e registra as decisões tomadas ao longo do desenvolvimento, com o   │
+   │ porquê de cada uma. NÃO é um Design System fechado, não é padronização   │
+   │ obrigatória e não é limite para mudanças futuras.                        │
+   │                                                                          │
+   │ Agentes têm liberdade para EVOLUIR, REFATORAR ou REORGANIZAR a           │
+   │ arquitetura de HTML e CSS — classes, estratégia de grid, breakpoints,    │
+   │ nomes, tokens, estrutura de arquivos — sempre que um novo requisito ou   │
+   │ uma solução melhor pedir. Nenhum "como" descrito abaixo é barreira.      │
+   │                                                                          │
+   │ O que se preserva são apenas as DIRETRIZES ARQUITETURAIS PERMANENTES do  │
+   │ projeto, registradas em AGENTS.md (mobile-first, HTML/CSS puros, tokens  │
+   │ em vez de valores soltos, sem gradiente/sombra/raio, alvo de toque       │
+   │ acessível, aria-label em botão só-ícone). Essas continuam valendo; o     │
+   │ resto é histórico de decisão, livre para mudar.                          │
+   │                                                                          │
+   │ Ao alterar o código, ATUALIZE o comentário correspondente na mesma       │
+   │ passada — comentário que descreve implementação que já não existe é pior │
+   │ que comentário nenhum.                                                   │
+   └──────────────────────────────────────────────────────────────────────────┘
 
    ─ O que está implementado hoje ────────────────────────────────────────────
    Uma grade de células quadradas 1:1 separadas por linhas de 1px, sem bordas
    duplicadas, com dois usos derivados da mesma base:
      • .mosaico            → mosaico de preenchimento (auto-fill de colunas)
-     • .mosaico--navbar    → grade de botões, aninhada na faixa .navbar (fixa,
-                             dona da moldura em --color-line)
+     • .mosaico--navbar    → grade de botões, aninhada na .navbar (fixa, dona
+                             da moldura em --color-line)
 
-   ─ Três regimes de largura (WCAG 2.5.5 — faixa de alvo de toque 44–57.2px) ──
-   Na implementação atual, tanto .mosaico quanto .mosaico--navbar atravessam os
-   mesmos três regimes:
+   A .navbar tem DUAS orientações, e o mesmo limiar de 441px separa as duas:
+     • ≤ 440px → FAIXA inferior: os botões correm na HORIZONTAL.
+     • ≥ 441px → RAIL lateral esquerdo: os botões empilham na VERTICAL.
+
+   Nas duas orientações vale a mesma ideia: o eixo principal é dividido em N
+   células, o excedente de itens some e um botão de overflow ("mais", ⋮) ocupa
+   o último lugar. Muda só o eixo — e, com ele, o modo de descobrir N.
+
+   ─ Regimes de largura do .mosaico (WCAG 2.5.5 — alvo de toque 44–57.2px) ───
+   ATENÇÃO: estes três regimes descrevem o .mosaico de preenchimento. A
+   .mosaico--navbar segue os regimes A e B (é uma grade de colunas até 440px),
+   mas a partir de 441px NÃO segue o Regime C — vira rail e passa a dividir a
+   ALTURA, com mecânica própria (ver a seção do modo rail, mais abaixo).
 
      Regime A — < 264px: auto-fill livre, sem teto explícito. A própria
        mecânica do minmax(piso, 1fr) já mantém a célula dentro da faixa de
@@ -30,37 +52,42 @@
        (57.2px) até atingir 73.33px em 440px — a exceção que o requisito
        autoriza explicitamente só nesta janela.
      Regime C — > 440px: destrava. auto-fill retoma, mas agora com um teto
-       FIXO em --bloco-max (56px, escolha deliberada — ver token). Acima de
-       440px a .navbar também deixa de ser uma faixa inferior e vira um rail
-       lateral fixo, com os itens empilhados verticalmente.
+       FIXO em --bloco-max (56px, escolha deliberada — ver token).
 
    A transição B→C (440px → 441px) tem um salto visível e intencional:
    73.33px → 56px — uma escolha de design da implementação atual, não uma regra
    fixa; se um layout futuro pedir outra continuidade, é livre para mudar.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Tokens */
+/* Tokens
+   ─ Sobre tokens AINDA NÃO CONSUMIDOS ───────────────────────────────────────
+   Alguns tokens abaixo estão declarados mas nenhuma regra os usa hoje. Isso
+   está marcado explicitamente em cada um, para o comentário não sugerir um uso
+   que não existe. Eles não são erro: o protótipo ainda só renderiza ícones
+   numa malha — não há texto de interface. São pontos de extensão prontos para
+   quando houver. Se ficar claro que não serão usados, removê-los é uma
+   melhoria legítima (assim como aplicá-los, se o layout passar a ter texto). */
 :root {
     --font-base: "Inter", system-ui, sans-serif;
-    /* Pilha de fontes do projeto, declarada como token para existir num único lugar. "Inter" é a preferida; `system-ui` cai na fonte nativa do SO (Segoe UI, San Francisco, Roboto) e `sans-serif` é o último recurso. Impacto: se a webfont não carregar, o texto ainda aparece com uma sem-serifa coerente, sem salto para a serifada padrão do navegador. */
+    /* NÃO CONSUMIDO hoje: nenhuma regra declara `font-family`, então a fonte efetiva é a padrão do navegador (a webfont Inter é carregada pelo <head>, mas não aplicada). "Inter" é a preferida; `system-ui` cai na fonte nativa do SO e `sans-serif` é o último recurso. NOTA: AGENTS.md pede usar --font-base como fonte padrão da interface — aplicar este token (ex.: em `body`) fecharia essa lacuna. */
 
     /* Cores */
     --color-bg: #0d1420;
-    /* Medidas (único background em toda a aplicação: --color-bg) */
+    /* Único background de toda a aplicação. Consumido por html/body e pela .navbar (que precisa ser opaca por estar fixa sobre o conteúdo). */
     --color-line: #2a3b59;
     /* Azul acinzentado usado exclusivamente nas linhas de 1px da grade. É claro o bastante para separar as células, mas escuro o bastante para não competir com os ícones. Impacto: desenha a malha do mosaico sem virar o elemento dominante. */
     --color-text: #dfe7f2;
-    /* Quase branco com viés azulado (em vez de #fff puro), que reduz o brilho ofuscante sobre fundo escuro. Impacto: texto principal legível e confortável em leitura prolongada. */
+    /* NÃO CONSUMIDO hoje (não há texto de interface no protótipo). Quase branco com viés azulado em vez de #fff puro, para reduzir o brilho ofuscante sobre fundo escuro quando houver texto. */
     --color-text-muted: #94a3ba;
-    /* Versão dessaturada do texto para conteúdo secundário (legendas, rótulos). Impacto: cria hierarquia visual pelo contraste, sem precisar mudar tamanho de fonte. */
+    /* NÃO CONSUMIDO hoje. Versão dessaturada do anterior, reservada para conteúdo secundário (legendas, rótulos): cria hierarquia por contraste, sem mudar o tamanho da fonte. */
     --color-accent: #7aa6e8;
-    /* Azul de destaque aplicado aos ícones. Impacto: é a única cor "viva" da paleta, então tudo que a recebe vira automaticamente ponto focal. */
+    /* Azul de destaque. Consumido pelos ícones (.mosaico__bloco .bi) e pelo anel de foco. Impacto: é a única cor "viva" da paleta, então tudo que a recebe vira automaticamente ponto focal. */
 
     /* Medidas */
     --font-size-base: 1rem;
-    /* Tamanho de texto de referência em `rem`, ou seja, relativo à fonte-raiz do navegador. Impacto: se a pessoa aumentar o tamanho de fonte nas configurações do sistema/navegador, o layout acompanha — o que não aconteceria com `px`. */
+    /* NÃO CONSUMIDO hoje (mesma razão: não há texto). Serve de referência em `rem` para quando houver — em `rem`, o layout acompanha o tamanho de fonte configurado no sistema/navegador, o que não aconteceria com `px`. */
     --icon-size: 1.25rem;
-    /* fonte do ícone, 20px */
+    /* 20px — tamanho do glifo do ícone. Consumido por .mosaico__bloco .bi e pela derivação de --bloco-padding. */
 
     /* ─ Faixa de alvo de toque (WCAG 2.5.5 Target Size) ───────────────────
        --bloco-touch-min é o único piso que existe de fato como token: o teto
@@ -79,13 +106,17 @@
     /* Piso da coluna nos três regimes. Aqui a acessibilidade (44px) manda mais que o conteúdo (20px de ícone): a derivação por --icon-size + --bloco-padding vira folga, não garantia. */
 
     --lock-cols: 6;
-    /* Número de colunas do Regime B — e também a contagem fixa de itens da navbar (6 botões de navegação). Um só token para as duas coisas porque são, semanticamente, o mesmo número por motivos diferentes: aqui é "quantas colunas a grade trava"; na navbar é "quantos itens o produto tem". */
+    /* Número de colunas em que a grade TRAVA no Regime B — e o mesmo teto de colunas da navbar em modo faixa. É só isso: um limite de COLUNAS. NÃO tem relação com quantos itens a navbar tem (hoje feed.html traz 21 botões de navegação + o "mais"); a contagem de itens vive no DOM e é lida pelas quantity queries, nunca fixada em CSS. */
 
     --lock-viewport-max: 27.5rem;
     /* 440px — limite superior do Regime B (bloco chega a 73.33px = 440/6) e largura máxima da grade da navbar em modo faixa inferior. Acima disso, o Regime C assume e a navbar vira rail lateral. NOTA: media queries não aceitam var(), então o breakpoint de troca de regime (441px = 27.5625rem, ver .mosaico e .navbar abaixo) é um literal separado — se este token mudar, os breakpoints em @media precisam ser recalculados manualmente. */
 
     --bloco-max: 3.5rem;
-    /* 56px — teto FIXO do Regime C, escolha deliberada de design (não derivado de --bloco-touch-min × 1.3 = 57.2px). É intencionalmente diferente do pico do Regime B (73.33px): a transição 440px→441px tem um salto visível de propósito, recuando o bloco para perto do teto de toque em vez de perpetuar o tamanho excepcional do regime travado. Reaproveitado em dois lugares: teto de célula do .mosaico em Regime C E espessura do rail lateral da navbar acima de 440px — os dois assentam no mesmo valor de propósito. */
+    /* 56px — escolha deliberada de design (não derivado de --bloco-touch-min × 1.3 = 57.2px). É intencionalmente diferente do pico do Regime B (73.33px): a transição 440px→441px tem um salto visível de propósito, recuando o bloco para perto do teto de toque em vez de perpetuar o tamanho excepcional do regime travado.
+       Hoje o token cumpre TRÊS papéis, todos assentados no mesmo valor de propósito:
+         1. teto da célula do .mosaico no Regime C (máximo do minmax de colunas);
+         2. PISO da célula do rail — é o divisor que define N = floor(altura / 56), ou seja, quantas células cabem na altura;
+         3. espessura do rail no caminho de fallback (ver @supports adiante, onde a espessura passa a ser a célula real). */
 
     /* Safe areas (notch/Dynamic Island/home indicator no iOS; edge-to-edge no
        Chrome Android) — resolvem para 0px em telas sem essas áreas, então não
@@ -98,12 +129,11 @@
     --safe-area-left: env(safe-area-inset-left, 0px);
     /* Recuo lateral esquerdo em modo paisagem com notch. Agora CONSUMIDO pela .navbar e pelo <main> em modo rail lateral (a navbar passa a ficar encostada na borda esquerda, então precisa do mesmo tipo de recuo que o modo faixa inferior dá à borda de baixo). */
     --safe-area-right: env(safe-area-inset-right, 0px);
-    /* Contraparte direita do anterior; ainda não consumido — o rail fica à esquerda, não à direita. Impacto atual: nenhum; ponto de extensão documentado. */
+    /* NÃO CONSUMIDO hoje — o rail fica à esquerda, não à direita, e a faixa inferior não encosta na borda direita obstruída. Mantido como contraparte simétrica e ponto de extensão (um rail à direita, por exemplo, passaria a precisar dele). */
 
-    /* Camada do header/rodapé "grudentos" (position: sticky) acima do
-       conteúdo que rola por baixo. */
+    /* Camada de sobreposição da navbar sobre o conteúdo que rola por baixo. */
     --z-sticky: 10;
-    /* Nível de empilhamento nomeado. Usar um token em vez de espalhar `z-index: 9999` evita a "guerra de z-index", em que cada componente novo chuta um número maior. Impacto: a navbar fica acima do conteúdo rolável de forma previsível e auditável, em qualquer orientação (faixa ou rail). */
+    /* Nível de empilhamento nomeado. O nome diz "sticky" por herança do vocabulário de "barra grudenta", mas a .navbar usa `position: fixed` — o token é só a CAMADA, não o método de posicionamento. Usar um token em vez de espalhar `z-index: 9999` evita a "guerra de z-index", em que cada componente novo chuta um número maior. Impacto: a navbar fica acima do conteúdo rolável de forma previsível, em qualquer orientação (faixa ou rail). */
 }
 
 *,
@@ -298,7 +328,7 @@ button.mosaico__bloco:active {
    max-width. */
 .mosaico--navbar {
     grid-template-columns: repeat(var(--lock-cols), 1fr);
-    /* Sobrescreve o `auto-fill` herdado de .mosaico por uma contagem fixa de --lock-cols (6) colunas iguais — a navbar tem um número de itens definido pelo produto, não pelo espaço. Impacto: os 6 botões permanecem visíveis até os breakpoints abaixo reduzirem a contagem. */
+    /* Sobrescreve o `auto-fill` herdado de .mosaico por uma contagem FIXA de --lock-cols (6) colunas iguais: a faixa deve ter um número de slots estável e previsível, não um que muda a cada pixel de largura. Impacto: até 6 itens cabem por vez; os degraus WCAG abaixo reduzem essa contagem em telas muito estreitas, e o que exceder é resolvido pelo botão "mais". */
     max-width: var(--lock-viewport-max);
     /* Teto defensivo de 440px. NA PRÁTICA nunca chega a engatar: o container (.navbar) tem 1px de borda de cada lado, então seu content box mede no máximo 440−2=438px enquanto permanece em modo faixa inferior — o modo rail lateral assume exatamente em 441px, antes que a grade pudesse precisar deste teto. Mantido mesmo assim para documentar a intenção e blindar contra mudanças futuras nos breakpoints (ver nota em --lock-viewport-max sobre a dessincronia possível entre token e media query literal). */
     border-top: 0;
@@ -309,11 +339,18 @@ button.mosaico__bloco:active {
 
 /* Os botões reaproveitam .mosaico__bloco, mas ZERAM todas as bordas herdadas
    (o .mosaico__bloco base desenha right+bottom). As divisórias INTERNAS voltam
-   por orientação mais abaixo, sempre via `:not(:first-child)`: a linha aparece
-   ANTES de cada bloco, então nenhuma delas depende de saber qual é o último.
-   A ARESTA DE FECHAMENTO (a que fica depois do último bloco visível) é tratada
-   à parte em cada modo — ver comentários no bloco de cada orientação — porque
-   ali sim importa exatamente qual bloco é o último. */
+   por orientação mais abaixo, via `box-shadow` — nunca `border` — aplicado a
+   TODOS os blocos, sem `:not()` nem exceção para o primeiro/último:
+     • faixa → `box-shadow: 1px 0 0` (outset, aresta direita);
+     • rail  → `box-shadow: inset 0 -1px 0` (aresta inferior).
+   Por que sombra e não borda: um bloco colapsado (linha de 0px no rail) ainda
+   renderizaria 1px de border, empilhando traços; a sombra não tem área numa
+   caixa de 0px e simplesmente some. E como blocos com `display: none` nem
+   geram caixa, a sombra deles também não aparece — por isso não é preciso
+   saber qual é o primeiro ou o último.
+   A ARESTA DE FECHAMENTO (depois do último bloco visível) NÃO é de nenhum
+   bloco: em ambos os modos quem a desenha é a moldura da própria .navbar —
+   ver as notas de cada orientação. */
 .mosaico--navbar .mosaico__bloco {
     appearance: none;
     /* remove o estilo nativo do <button> (relevo, gradiente) */
@@ -328,14 +365,19 @@ button.mosaico__bloco:active {
     cursor: pointer;
     /* mantém o ponteiro de "clicável" que o reset apagaria */
     border: 0;
-    /* Zera as quatro bordas herdadas do .mosaico__bloco base. As divisórias são redesenhadas por orientação (border-left na faixa, border-top no rail), via :not(:first-child), nas media queries abaixo. */
+    /* Zera as quatro bordas herdadas do .mosaico__bloco base. As divisórias são redesenhadas por orientação com `box-shadow` nas media queries abaixo (ver o comentário acima sobre por que sombra e não borda). */
 }
 
-/* Botão de overflow ("mais"): oculto por padrão. Só aparece quando a contagem
-   de itens ULTRAPASSA o limite da orientação (colunas na faixa, células-por-
-   altura no rail) — revelado pelas quantity queries abaixo, sem número de itens
-   fixo no CSS. É sempre o último filho no DOM; adicionar itens = inseri-los
-   ANTES dele. */
+/* Botão de overflow ("mais", ⋮). O default é OCULTO, e cada orientação decide
+   quando mostrá-lo — por caminhos opostos, porque o caso comum de cada uma é
+   diferente:
+     • FAIXA (≤440px): segue oculto e as quantity queries o REVELAM quando os
+       itens ultrapassam as colunas.
+     • RAIL (≥441px): nasce VISÍVEL (o comum é haver excedente) e a escada de
+       alturas o ESCONDE quando tudo cabe.
+   Nos dois casos a decisão compara a contagem real de irmãos no DOM com o
+   limite da orientação — nenhum número de itens fica fixado no CSS.
+   É sempre o último filho no DOM; adicionar itens = inseri-los ANTES dele. */
 .mosaico__bloco--mais {
     display: none;
 }
@@ -349,15 +391,20 @@ button.mosaico__bloco:active {
    É a MESMA lógica que o modo rail reaproveita na vertical, trocando só o
    limite de colunas por "quantas células cabem na altura".
 
-   Gatilho de overflow para C colunas (itens de navegação = N; o "mais" é sempre
-   o último filho, na posição N+1):
-     • revelar o "mais" quando N > C  ⟺  o "mais" está na posição ≥ C+2
+   Gatilho de overflow para C colunas (itens de navegação = I; o "mais" é sempre
+   o último filho, na posição I+1):
+     • revelar o "mais" quando I > C  ⟺  o "mais" está na posição ≥ C+2
        →  .mosaico__bloco--mais:nth-child(n + {C+2})
-     • esconder do C-ésimo item em diante quando N > C: o C-ésimo filho casa
-       `:nth-last-child(n + 3)` só quando o total ≥ C+2 (isto é, N > C); o
+     • esconder do C-ésimo item em diante quando I > C: o C-ésimo filho casa
+       `:nth-last-child(n + 3)` só quando o total ≥ C+2 (isto é, I > C); o
        combinador `~` estende o corte aos irmãos seguintes.
-   Com N = C (ex.: os 6 itens atuais em 6 colunas) nenhuma das duas dispara:
-   todos ficam visíveis e o "mais" some — que é o estado de hoje. */
+   Quando I ≤ C nenhuma das duas dispara: todos os itens ficam visíveis e o
+   "mais" some.
+
+   Estado de hoje: feed.html traz I = 21 itens de navegação, bem acima de
+   C = 6, então nesta orientação o overflow SEMPRE dispara — aparecem 5 itens
+   mais o "mais" no sexto slot. O CSS não sabe o número 21: ele só compara
+   irmãos, então mudar a quantidade de botões no HTML não pede ajuste aqui. */
 @media (max-width: 27.5rem) {
     /* .navbar mantém a border-right SEMPRE (herdada da regra base). Ela fecha a
        faixa na ponta física direita — inclusive por cima da(s) coluna(s)
@@ -447,28 +494,54 @@ button.mosaico__bloco:active {
 
 /* ═══ MODO RAIL LATERAL (≥ 441px) — expansão VERTICAL ═══════════════════════
    A navbar vira uma coluna única, fixa à esquerda, de altura total (100dvh),
-   com os itens empilhados. O limite é "quantas células de 56px cabem na ALTURA
-   da viewport".
+   com os itens empilhados. O limite é N = floor(altura útil / 56): quantas
+   células de --bloco-max cabem na ALTURA.
 
-   Por que o three-dots vertical NÃO é resolvido aqui: diferente da faixa
-   inferior — onde o limite é 6, um número CONSTANTE que o CSS compara direto —,
-   aqui o limite é a altura, um valor contínuo. O CSS não consegue decidir
-   "revelar o three-dots só quando não coube" para qualquer altura sem um @media
-   por nível de altura (bounded) ou medição (JS). Escolha do projeto: manter a
-   arquitetura UNBOUNDED (qualquer N, sem quebrar o layout) já, e deixar o
-   INDICADOR three-dots vertical para o passo FUTURO em JavaScript — o mesmo que
-   vai "renderizar as células ocultas". O three-dots segue display:none aqui.
+   ─ Células que PREENCHEM a altura (espelho da faixa inferior) ──────────────
+   O rail usa o MESMO mecanismo da faixa: `minmax(piso, 1fr)`. Na faixa isso
+   divide a LARGURA (auto-fill conta as colunas que cabem, 1fr distribui a
+   sobra); aqui divide a ALTURA. Consequência: a célula mede exatamente
+   altura ÷ N, sem sobra e sem meia-célula esmagada no fim — antes as linhas
+   eram de 56px FIXOS e o resto da divisão virava uma faixa morta (ou uma
+   célula cortada) na base. O piso do minmax é --bloco-max (56px), então
+   N = floor(altura / 56) e a célula fica em [56px, 112px).
 
-   Como o excedente some para QUALQUER N, sem número de itens fixo, sem
-   meia-célula e sem um só breakpoint: deixamos o próprio motor do grid contar
-   as linhas que cabem (grid-template-rows: repeat(auto-fill, 56px) sobre uma
-   altura definida) e colapsamos o excedente em linhas de 0px (grid-auto-rows). */
+   ─ Duas camadas: este bloco é o FALLBACK ───────────────────────────────────
+   O que está declarado AQUI vale em todos os motores e já entrega o essencial:
+   células uniformes, altura preenchida, excedente colapsado. Mas a LARGURA
+   fica fixa em --bloco-max, então a célula sai um pouco mais alta que larga.
+   Logo abaixo, um bloco @supports refina isso onde o motor sabe calcular
+   (Chromium/WebKit), tornando a célula um quadrado exato — inclusive
+   substituindo as linhas do grid. Ler os dois em conjunto: este é a base,
+   aquele é o refinamento.
+
+   ─ Excedente e o botão "mais" ──────────────────────────────────────────────
+   O excedente some para QUALQUER quantidade de itens, sem número fixo no CSS:
+   as linhas explícitas comportam N itens e o que passa disso cai em linhas
+   implícitas de 0px (grid-auto-rows). O indicador "mais" (⋮) É exibido nesta
+   orientação — a mecânica dele está na seção THREE-DOTS DO RAIL, no fim do
+   arquivo, junto da escada de alturas que decide quando escondê-lo.
+   (Registro histórico: por um tempo este comentário afirmou que o three-dots
+   vertical só seria possível com JavaScript. Não é — resolveu-se discretizando
+   a altura com uma escada de @media, o mesmo recurso que a faixa já usava nos
+   degraus WCAG.) */
 @media (min-width: 27.5625rem) {
     .navbar {
         inset: 0 auto 0 0;
         /* top:0 right:auto bottom:0 left:0 — altura total, ancorado à esquerda. */
+        height: 100dvh;
+        /* Altura EXPLÍCITA do rail. Embora `inset: 0 auto 0 0` (top+bottom fixos)
+           já defina a altura pela spec de posicionamento, engines WebKit/iOS
+           tratam esse caso como indefinido de forma intermitente, fazendo o
+           `height: 100%` do .mosaico--navbar colapsar para `auto`. Sem altura de
+           bloco definida, o auto-fill de LINHAS não tem como contar quantas
+           trilhas cabem e degenera para UMA repetição — todos os botões disputam
+           a mesma linha e aparecem esmagados/sobrepostos. Fixar a altura aqui
+           (mesma unidade `dvh` já usada em html,body) remove a ambiguidade e
+           garante que a contagem de linhas sempre tenha um eixo definido. */
         width: calc(var(--bloco-max) + 2px);
-        /* 56px de célula + 1px de borda de cada lado. Mesmo --bloco-max do teto do Regime C do .mosaico geral. */
+        /* FALLBACK da espessura: 56px de célula + 1px de borda de cada lado. O bloco @supports adiante substitui isto pela largura da célula REAL (altura ÷ N), que é o que torna a célula quadrada.
+           LIMITAÇÃO CONHECIDA deste fallback: ao contrário da versão refinada, não soma --safe-area-left — e como a .navbar aplica essa safe area como padding-left, num aparelho com notch em paisagem ela comeria a coluna e estreitaria a célula. Só afeta motores sem suporte a @supports com divisão em calc() (hoje, Firefox) E com safe area lateral não nula, combinação hoje inexistente na prática. */
         padding-bottom: 0;
         /* O rail não fica mais na base: a safe-area-bottom deixa de ser relevante. */
         padding-top: var(--safe-area-top);
@@ -476,25 +549,36 @@ button.mosaico__bloco:active {
         padding-left: var(--safe-area-left);
         /* Equivalente lateral: o rail encosta na borda esquerda. */
         overflow: hidden;
-        /* Fecha a sobra da última linha (altura ÷ 56 raramente é inteiro) e impede qualquer vazamento das linhas implícitas. */
+        /* Rede de segurança para o excedente. As linhas explícitas agora preenchem a altura exatamente (o 1fr consome o resto da divisão), então NÃO há mais a "sobra da última linha" que esta regra fechava originalmente — o que ela contém hoje é qualquer vazamento das linhas implícitas de 0px e do conteúdo recortado nelas. */
     }
 
     .mosaico--navbar {
         height: 100%;
-        /* Altura DEFINIDA, herdada do container fixo de 100dvh — é o que o auto-fill de linhas precisa para saber quantas cabem. */
+        /* Altura DEFINIDA, herdada do container de 100dvh — é o que a contagem de linhas precisa para saber quantas cabem. Sem isto o eixo de bloco fica indefinido e a contagem degenera (ver o comentário de `height` na .navbar acima). */
         grid-template-columns: 1fr;
         /* Uma coluna: os itens empilham. */
-        grid-template-rows: repeat(auto-fill, var(--bloco-max));
-        /* Cria floor(altura / 56) linhas de 56px. O motor do grid faz a conta de "quantas cabem" que nenhum seletor CSS sabe expressar — e vale para qualquer N. */
+        grid-template-rows: repeat(auto-fill, minmax(var(--bloco-max), 1fr));
+        /* Cria N = floor(altura / 56) linhas e ESTICA cada uma para altura ÷ N (o 1fr distribui a sobra da divisão). É o espelho exato do `minmax(piso, 1fr)` que a faixa inferior usa na largura. Sem o 1fr (linhas de 56px fixos) sobrava sempre um resto na base, que aparecia como célula cortada/esmagada. SUBSTITUÍDO pelo @supports adiante, onde a contagem passa a vir de --rail-linhas para casar exatamente com a largura. */
         grid-auto-rows: 0;
         /* Os itens que sobram caem em linhas implícitas de 0px → somem. Unbounded, sem meia-célula. */
     }
 
     .mosaico--navbar .mosaico__bloco {
         aspect-ratio: auto;
-        /* No rail a célula é quadrada pelas trilhas do grid (coluna 56px × linha 56px), não pelo aspect-ratio. Zerar o aspect-ratio: 1 herdado é o que deixa a linha implícita realmente colapsar a 0px em vez de o item insistir em 56px de altura. */
+        /* No rail quem define a célula são as TRILHAS do grid (coluna = espessura do rail, linha = altura ÷ N), não o aspect-ratio. Zerar o aspect-ratio: 1 herdado é obrigatório por dois motivos: (1) é o que deixa a linha implícita de 0px realmente colapsar, em vez de o item insistir numa altura igual à largura; (2) com as linhas agora elásticas (1fr), um aspect-ratio ativo brigaria com a altura da trilha. */
         overflow: hidden;
-        /* Nas linhas de 0px, recorta o ícone para ele não vazar na sobra da última linha. Nas linhas cheias não recorta nada. */
+        /* Nas linhas colapsadas de 0px, recorta o ícone (que não encolhe junto) para ele não vazar por cima das células vizinhas. Nas linhas cheias não recorta nada. */
+        padding: 0;
+        /* ESSENCIAL para o colapso a 0px funcionar. O --bloco-padding (12px) herdado
+           do .mosaico__bloco base existe para garantir o alvo de toque na célula
+           MÍNIMA de 44px do modo faixa — mas padding NÃO encolhe: mesmo com
+           min-height:0 e a trilha de grid a 0px, os 12px de cima + 12px de baixo
+           mantinham o item colapsado em 24px, que então vazavam para fora da própria
+           trilha e se EMPILHAVAM/SOBREPUNHAM no fim do rail (o "esmagamento" da
+           última fila). No rail o alvo de toque já vem da trilha de 56px (o ícone é
+           centralizado pelo flex, sem precisar de padding), então zerar aqui é
+           seguro para as células visíveis E é o que permite as ocultas irem de fato
+           a 0px. */
     }
 
     .mosaico--navbar .mosaico__bloco {
@@ -507,32 +591,97 @@ button.mosaico__bloco:active {
     }
 }
 
+/* ═══ ESPESSURA DO RAIL = TAMANHO DA CÉLULA (proporção 1:1 exata) ════════════
+   As linhas acima já garantem que a célula tenha ALTURA = altura ÷ N em todos
+   os motores. Falta a LARGURA acompanhar, para a célula ficar quadrada.
+
+   Por que isso não sai de graça: na faixa inferior a propagação é largura →
+   altura, e funciona porque altura é dirigida pelo CONTEÚDO (o aspect-ratio do
+   bloco estica a faixa). No rail a propagação teria de ser altura → largura, e
+   largura é dirigida pelo CONTAINER — além disso o grid dimensiona as COLUNAS
+   antes das LINHAS, então na hora de medir a coluna a altura da linha ainda não
+   existe. A assimetria é do próprio CSS, não deste layout.
+
+   Solução: calcular N e o tamanho da célula aritmeticamente. Requer dividir
+   comprimento por comprimento dentro de calc() — CSS Values 4, hoje suportado
+   por Chromium e WebKit (cobre Android, iOS, iPadOS e Chrome/Edge/Safari), mas
+   ainda NÃO pelo Firefox. Por isso vem atrás de @supports: onde o motor sabe
+   calcular, a célula fica exatamente quadrada; onde não sabe, a regra inteira é
+   ignorada e vale o fallback de espessura fixa declarado acima.
+
+   O QUE ESTE BLOCO SUBSTITUI: não é só a largura. Ele também reescreve
+   `grid-template-rows`, para que a contagem de linhas do grid e a largura do
+   rail venham do MESMO --rail-linhas. Enquanto eram duas contagens paralelas
+   (auto-fill de um lado, aritmética do outro) elas divergiam nas fronteiras e
+   o 1:1 quebrava — ver o comentário da regra, adiante.
+
+   CUSTO DO FALLBACK, medido: sem o refinamento a célula fica mais alta que
+   larga, e o desvio cresce quanto MENOS linhas cabem — porque o 1fr distribui
+   o resto da divisão entre poucas linhas. Em alturas típicas de desktop
+   (700–1100px, N de 12 a 19) fica em 2%–6%, visualmente imperceptível; numa
+   janela baixa como 281px (N = 4) chega a 24% (célula 56 × 69,75). Em nenhum
+   caso há sobra, corte ou esmagamento — o defeito que de fato importava
+   corrigir está resolvido nos dois caminhos. Manter esse trade-off no
+   fallback foi decisão de projeto (o alvo declarado é Chromium/WebKit); a
+   alternativa seria voltar às linhas fixas e reintroduzir a sobra na base. */
+@supports (width: calc(100dvh / round(down, calc(100dvh / 3.5rem), 1))) {
+    @media (min-width: 27.5625rem) {
+        :root {
+            --rail-altura-util: calc(100dvh - 2px - var(--safe-area-top));
+            /* Altura REAL que a grade recebe: o viewport menos as bordas de 1px de cima e de baixo da .navbar e menos o recuo do notch. Precisa bater com o content box do container, porque é dela que saem tanto o número de linhas quanto o lado da célula — se divergisse do espaço real, as linhas não preencheriam a altura exatamente. */
+            --rail-linhas: max(1, round(down, calc((var(--rail-altura-util) + 0.05px) / var(--bloco-max)), 1));
+            /* N = floor(altura útil / 56) — quantas células cabem. O max(1, …) evita divisão por zero em alturas absurdamente pequenas (viewport menor que uma célula).
+               O +0.05px torna a transição de N DETERMINÍSTICA entre motores. Nas alturas em que a altura útil é múltiplo exato de 56, o `100dvh` do WebKit resolve alguns centésimos abaixo do valor inteiro e o floor cairia um degrau antes do Chromium — as duas engines discordariam sobre quantas linhas cabem exatamente na fronteira. O epsilon (bem abaixo de um pixel de dispositivo) alinha as duas no mesmo N, que é o que permite à escada de degraus lá embaixo usar um limiar único.
+               NOTA: este epsilon só é seguro porque o grid consome o MESMO --rail-linhas (ver .mosaico--navbar abaixo). Enquanto as linhas vinham de um `auto-fill` independente, qualquer epsilon aqui criava divergência entre a contagem do motor e a da aritmética, e era justamente isso que quebrava o 1:1 nas fronteiras. */
+            --rail-celula: calc(var(--rail-altura-util) / var(--rail-linhas));
+            /* Lado da célula = altura ÷ N. Reusado como espessura do rail (abaixo) e como reserva do <main>. */
+        }
+
+        .mosaico--navbar {
+            grid-template-rows: repeat(var(--rail-linhas), 1fr);
+            /* CHAVE do 1:1 exato. Antes as linhas vinham de `auto-fill` e a largura de uma aritmética PARALELA que tentava reproduzir a mesma contagem — e as duas divergiam nas fronteiras, porque nos múltiplos exatos de 56 os motores discordam: medido, o Chromium conta 12 linhas em 672px enquanto o WebKit conta 15 em 896px. Qualquer epsilon que consertasse um quebrava o outro. Aqui o grid passa a usar EXATAMENTE o mesmo --rail-linhas que dimensiona a largura, então a contagem é uma só, por construção — não há o que divergir. O `1fr` continua distribuindo a altura igualmente, como o minmax(…, 1fr) do fallback. */
+        }
+
+        .navbar {
+            width: calc(var(--rail-celula) + 2px + var(--safe-area-left));
+            /* Espessura do rail = lado da célula + 1px de borda de cada lado + a safe area esquerda. A safe area entra aqui porque a .navbar a aplica como padding-left: sem somá-la à largura, ela comeria a coluna e a célula deixaria de ser quadrada em telas com notch em paisagem. Agora largura = altura: quadrado exato. */
+        }
+
+        main {
+            padding-left: calc(var(--rail-celula) + 2px + var(--safe-area-left));
+            /* A reserva do conteúdo acompanha a espessura dinâmica do rail. */
+        }
+    }
+}
+
 /* NOTA — a aresta de FECHAMENTO do rail (a base, depois do último item) fica a
    cargo da PRÓPRIA border-bottom da .navbar (herdada da regra base, sem override
    aqui) — exatamente como a faixa inferior mantém SEMPRE a border-right da
    .navbar para fechar a ponta direita (seção acima). Em nenhum dos dois modos a
-   divisória de fechamento é transferida para o último item: no rail isso nem
-   seria possível, porque exigiria testar "a grade está cheia?" com um seletor, e
-   aqui o limite é `floor(altura / 56)`, um valor CONTÍNUO — não existe `:has(
-   :nth-child(K))` porque K não é um literal que se escreve no CSS (mesma
-   fronteira já documentada para o three-dots vertical, duas notas acima).
+   divisória de fechamento é transferida para o último item, e no rail isso
+   segue sendo o mais simples: transferi-la exigiria um seletor capaz de dizer
+   "este é o último item VISÍVEL", e a posição de corte depende de N — que a
+   escada de alturas conhece por degrau, mas que nenhum seletor lê diretamente.
 
-   Consequência prática: no caso comum (poucos itens numa tela alta — o "sobra
-   espaço vazio" do teste), o último item real desenha sua própria divisória
-   (linha entre ele e o próximo, se houver) mas NADA depois disso; quem fecha a
-   base do rail de fato é sempre a .navbar. No caso raro em que a altura é um
-   múltiplo EXATO de 56px+2px E os itens preenchem justo todas as linhas, a
-   sombra do último item e a border-bottom da .navbar acabam bem próximas —
-   um detalhe cosmético menor, preferível ao vão vazio sem moldura que a troca
-   de dono causaria nos casos sub-preenchidos (que são a maioria). */
+   Como as linhas agora preenchem a altura exatamente, o caso "itens ocupam
+   todas as N linhas" (que inclui o estado atual, com 21 itens) deixou de ser
+   raro e virou o comum: nele, a sombra inferior do último item cai junto à
+   border-bottom da .navbar, no mesmo lugar — visualmente uma linha só. Quando
+   sobram linhas vazias (poucos itens numa tela alta), o último item desenha a
+   própria divisória e nada depois dela; quem fecha a base continua sendo a
+   .navbar, o que evita deixar o vão vazio sem moldura. */
 
-/* NOTA — acessibilidade interina do rail vertical: os itens colapsados (linhas
-   de 0px) continuam no DOM e no tab order — não são display:none, ao contrário
-   do corte por quantity query da faixa inferior. Até o JS futuro assumir o
-   overflow vertical (levar o excedente para dentro do "mais" e retirá-lo do
-   foco), teclado e leitor de tela alcançam esses itens mesmo invisíveis. É a
-   consequência aceita da escolha "unbounded em CSS puro agora"; o JS fecha a
-   lacuna. */
+/* NOTA — acessibilidade do excedente no rail: os itens colapsados (linhas de
+   0px) continuam no DOM e no tab order — não são display:none, ao contrário do
+   corte por quantity query da faixa inferior. Ou seja, teclado e leitor de tela
+   ainda alcançam itens que ninguém vê.
+
+   O botão "mais" já aparece (ver seção THREE-DOTS DO RAIL), mas hoje é apenas
+   um INDICADOR: sem JavaScript ele não abre nada, então o excedente não tem
+   como ser alcançado por quem enxerga. As duas pontas — tirar o excedente
+   invisível do foco e dar função ao "mais" — são a lacuna conhecida deste
+   estado; fechá-la pede comportamento (JS) ou um redesenho que caiba em CSS,
+   e ambos são caminhos abertos, não decisões travadas. */
 
 /* ─ Reserva de espaço para o conteúdo rolável ─────────────────────────────
    No modo faixa inferior, a navbar é fixed (fora do fluxo) na base, então o
@@ -567,13 +716,98 @@ main {
 }
 
 /* No modo rail lateral, a reserva vertical do <main> deixa de fazer sentido
-   (a navbar não ocupa mais a base) e vira uma reserva HORIZONTAL, do mesmo
-   jeito que a navbar reserva a própria espessura (--bloco-max + 2px). */
+   (a navbar não ocupa mais a base) e vira uma reserva HORIZONTAL, espelhando a
+   espessura do rail. Como essa espessura tem dois valores possíveis (fixa no
+   fallback, dinâmica no @supports), a reserva também tem: o valor de fallback
+   fica aqui e o refinado é declarado junto da largura refinada, para os dois
+   nunca saírem de sincronia. */
 @media (min-width: 27.5625rem) {
     main {
         padding-bottom: 0;
         /* Cancela a reserva de rodapé herdada da regra padrão acima — não há mais navbar na base. */
         padding-left: calc(var(--bloco-max) + 2px + var(--safe-area-left));
-        /* Reserva a largura exata do rail (58px) mais a safe area esquerda, para o conteúdo não nascer por baixo dele. */
+        /* FALLBACK: espelha a espessura fixa do rail (56px + 2px de borda) mais a safe area esquerda, para o conteúdo não nascer por baixo dele. Substituído pelo @supports, onde a reserva passa a acompanhar a célula real. */
     }
 }
+
+/* ═══ THREE-DOTS DO RAIL — reaproveitando a lógica da faixa inferior ═════════
+   A faixa (≤440px) decide o overflow com "quantity queries": o número de
+   COLUNAS é uma constante C que o CSS escreve no seletor, e `:nth-child()`
+   compara essa constante com a contagem real de itens no DOM. É a mesma ideia
+   aqui — só que a constante passa a ser o número de LINHAS.
+
+   O que antes bloqueava: no rail o limite é `floor(altura / 56)`, um valor
+   CONTÍNUO, e nenhum seletor sabe ler um número contínuo. A saída é a mesma
+   que a faixa já usa para os degraus WCAG: DISCRETIZAR o eixo com uma escada
+   de media queries. Cada degrau fixa um N e, dentro dele, a comparação com a
+   contagem de itens volta a ser um `:nth-child()` comum.
+
+   Mecânica, em duas partes:
+     1. Por padrão, no rail, o "mais" APARECE e é ancorado na ÚLTIMA linha
+        visível por `grid-row: -2 / -1` — a última linha do grid EXPLÍCITO,
+        seja ela criada pelo auto-fill (fallback) ou pelo repeat(--rail-linhas)
+        do @supports; a ancoragem funciona igual nos dois. O item real que
+        ocuparia esse lugar é empurrado pelo auto-placement para uma linha
+        implícita de 0px e some — exatamente o mesmo destino do resto do
+        excedente.
+     2. A escada abaixo o ESCONDE quando tudo cabe. Para um degrau de N linhas,
+        "cabe" significa "itens ≤ N", e como o "mais" é sempre o último filho
+        (posição itens+1), isso é `:nth-child(-n + N+1)`. Só min-height, em
+        ordem crescente: para uma altura real todos os degraus até N casam, e
+        o mais permissivo (o de N) é o que decide — a união dá "itens ≤ N",
+        que é precisamente a condição de caber.
+
+   Faixa coberta: N de 3 a 40 linhas (viewports de 170px a 2242px de altura),
+   o que suporta de 3 a 40 itens de navegação. Passar disso pede estender a
+   escada — o mesmo contrato de manutenção que a faixa inferior já tem para os
+   seus degraus C=3..6. Media query não aceita var(), então os limiares são
+   literais (mesma nota já registrada em --lock-viewport-max). */
+@media (min-width: 27.5625rem) {
+    .mosaico__bloco--mais {
+        display: flex;
+        /* No rail o "mais" nasce VISÍVEL; a escada abaixo o esconde quando tudo couber. É o inverso da faixa, onde ele nasce oculto e as quantity queries o revelam — a diferença existe porque aqui o caso comum (mais itens que linhas) é o de overflow. */
+        grid-row: -2 / -1;
+        /* Ancora na última linha do grid EXPLÍCITO. Não depende de saber quanto vale N: -1 é sempre a última linha explícita, seja qual for a altura e seja qual for o caminho que a criou (auto-fill no fallback, repeat(--rail-linhas) no @supports). */
+    }
+}
+
+/* Escada de degraus — um por N (linhas que cabem). Gerada mecanicamente:
+   min-height = N × 56px + 2px de borda; seletor = :nth-child(-n + N+1). */
+@media (min-width: 27.5625rem) and (min-height: 10.625rem) { .mosaico__bloco--mais:nth-child(-n + 4) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 14.125rem) { .mosaico__bloco--mais:nth-child(-n + 5) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 17.625rem) { .mosaico__bloco--mais:nth-child(-n + 6) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 21.125rem) { .mosaico__bloco--mais:nth-child(-n + 7) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 24.625rem) { .mosaico__bloco--mais:nth-child(-n + 8) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 28.125rem) { .mosaico__bloco--mais:nth-child(-n + 9) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 31.625rem) { .mosaico__bloco--mais:nth-child(-n + 10) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 35.125rem) { .mosaico__bloco--mais:nth-child(-n + 11) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 38.625rem) { .mosaico__bloco--mais:nth-child(-n + 12) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 42.125rem) { .mosaico__bloco--mais:nth-child(-n + 13) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 45.625rem) { .mosaico__bloco--mais:nth-child(-n + 14) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 49.125rem) { .mosaico__bloco--mais:nth-child(-n + 15) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 52.625rem) { .mosaico__bloco--mais:nth-child(-n + 16) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 56.125rem) { .mosaico__bloco--mais:nth-child(-n + 17) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 59.625rem) { .mosaico__bloco--mais:nth-child(-n + 18) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 63.125rem) { .mosaico__bloco--mais:nth-child(-n + 19) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 66.625rem) { .mosaico__bloco--mais:nth-child(-n + 20) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 70.125rem) { .mosaico__bloco--mais:nth-child(-n + 21) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 73.625rem) { .mosaico__bloco--mais:nth-child(-n + 22) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 77.125rem) { .mosaico__bloco--mais:nth-child(-n + 23) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 80.625rem) { .mosaico__bloco--mais:nth-child(-n + 24) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 84.125rem) { .mosaico__bloco--mais:nth-child(-n + 25) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 87.625rem) { .mosaico__bloco--mais:nth-child(-n + 26) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 91.125rem) { .mosaico__bloco--mais:nth-child(-n + 27) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 94.625rem) { .mosaico__bloco--mais:nth-child(-n + 28) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 98.125rem) { .mosaico__bloco--mais:nth-child(-n + 29) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 101.625rem) { .mosaico__bloco--mais:nth-child(-n + 30) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 105.125rem) { .mosaico__bloco--mais:nth-child(-n + 31) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 108.625rem) { .mosaico__bloco--mais:nth-child(-n + 32) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 112.125rem) { .mosaico__bloco--mais:nth-child(-n + 33) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 115.625rem) { .mosaico__bloco--mais:nth-child(-n + 34) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 119.125rem) { .mosaico__bloco--mais:nth-child(-n + 35) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 122.625rem) { .mosaico__bloco--mais:nth-child(-n + 36) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 126.125rem) { .mosaico__bloco--mais:nth-child(-n + 37) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 129.625rem) { .mosaico__bloco--mais:nth-child(-n + 38) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 133.125rem) { .mosaico__bloco--mais:nth-child(-n + 39) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 136.625rem) { .mosaico__bloco--mais:nth-child(-n + 40) { display: none; } }
+@media (min-width: 27.5625rem) and (min-height: 140.125rem) { .mosaico__bloco--mais:nth-child(-n + 41) { display: none; } }

@@ -1,0 +1,9 @@
+# Dependências
+node_modules/
+
+# Artefatos do Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+.playwright-cli/

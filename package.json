@@ -1,0 +1,31 @@
+{
+  "name": "frontend-developer-v3",
+  "version": "1.0.0",
+  "description": "See [AGENTS.md](AGENTS.md).",
+  "main": "index.js",
+  "scripts": {
+    "pw:install": "playwright install",
+    "test": "playwright test",
+    "test:android": "playwright test --project=android-pixel-7 --project=android-galaxy-s24",
+    "test:ios": "playwright test --project=ios-iphone-15 --project=ios-iphone-se",
+    "test:tablet": "playwright test --project=tablet-galaxy-tab-s9 --project=tablet-ipad-pro-11",
+    "test:desktop": "playwright test --project=desktop-chromium --project=desktop-firefox --project=desktop-webkit",
+    "test:ui": "playwright test --ui",
+    "test:report": "playwright show-report"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Amarildo-correa/frontend-developer-v3.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Amarildo-correa/frontend-developer-v3/issues"
+  },
+  "homepage": "https://github.com/Amarildo-correa/frontend-developer-v3#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}
