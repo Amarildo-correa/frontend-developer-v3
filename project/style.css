@@ -1,21 +1,33 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   DESIGN SYSTEM — MOSAICO
-   Base única: uma grade de células quadradas 1:1 separadas por linhas de 1px,
-   sem bordas duplicadas. Dois usos derivam dela:
+   ESTILOS DO PROTÓTIPO — ESTADO ATUAL (PROJETO EM DESENVOLVIMENTO CONTÍNUO)
+
+   Este arquivo documenta a implementação de frontend COMO ELA ESTÁ HOJE — NÃO
+   um Design System fechado, definitivo ou imutável. O projeto está em
+   desenvolvimento contínuo: a arquitetura de frontend (organização das classes,
+   estratégia de grid, breakpoints, nomes, estrutura de HTML/CSS) PODE e DEVE ser
+   evoluída, refatorada ou reorganizada sempre que isso levar a uma solução mais
+   consistente, escalável ou de melhor qualidade para os prompts futuros. Nada
+   aqui deve ser tratado como barreira: sinta-se livre para alterar HTML e CSS e
+   para propor e implementar melhorias arquiteturais. O "como" da arquitetura
+   descrita abaixo é livre para evoluir.
+
+   ─ O que está implementado hoje ────────────────────────────────────────────
+   Uma grade de células quadradas 1:1 separadas por linhas de 1px, sem bordas
+   duplicadas, com dois usos derivados da mesma base:
      • .mosaico            → mosaico de preenchimento (auto-fill de colunas)
-     • .mosaico--navbar    → grade de 6 botões, aninhada na faixa .navbar (fixa,
-                             100% da largura, dona da moldura em --color-line)
-   Invariantes: (1) todo bloco é quadrado; (2) toda linha da grade tem 1px.
+     • .mosaico--navbar    → grade de botões, aninhada na faixa .navbar (fixa,
+                             dona da moldura em --color-line)
 
    ─ Três regimes de largura (WCAG 2.5.5 — faixa de alvo de toque 44–57.2px) ──
-   Tanto .mosaico quanto .mosaico--navbar atravessam os mesmos três regimes:
+   Na implementação atual, tanto .mosaico quanto .mosaico--navbar atravessam os
+   mesmos três regimes:
 
      Regime A — < 264px: auto-fill livre, sem teto explícito. A própria
        mecânica do minmax(piso, 1fr) já mantém a célula dentro da faixa de
        toque (ver comentário em .mosaico).
      Regime B — 264–440px: trava em --lock-cols (6) colunas. Como a largura
        cresce e o número de colunas não, a célula estica além do teto de +30%
-       (57.2px) até atingir 73.33px em 440px — a EXCEÇÃO que o requisito
+       (57.2px) até atingir 73.33px em 440px — a exceção que o requisito
        autoriza explicitamente só nesta janela.
      Regime C — > 440px: destrava. auto-fill retoma, mas agora com um teto
        FIXO em --bloco-max (56px, escolha deliberada — ver token). Acima de
@@ -23,9 +35,8 @@
        lateral fixo, com os itens empilhados verticalmente.
 
    A transição B→C (440px → 441px) tem um salto visível e intencional:
-   73.33px → 56px. Não é o mesmo --bloco-max do pico de B — é uma escolha de
-   design separada, então a continuidade entre os dois regimes NÃO é uma
-   invariante deste sistema.
+   73.33px → 56px — uma escolha de design da implementação atual, não uma regra
+   fixa; se um layout futuro pedir outra continuidade, é livre para mudar.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Tokens */

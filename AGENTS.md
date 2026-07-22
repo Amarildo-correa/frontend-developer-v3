@@ -20,9 +20,8 @@ Desenvolver protótipos de frontend **mobile-first**, baseados em grid, utilizan
 - NÃO utilizar cantos arredondados (`border-radius`). Todos os componentes DEVEM possuir cantos retos (`border-radius: 0`).
 - Todos os valores (cores, medidas, z-index) DEVEM vir de tokens em `:root` (ex.: `var(--color-line)`, `var(--bloco-padding)`). NÃO usar valores hardcoded no corpo das regras.
 - Fontes e espaçamentos DEVEM usar `rem`, NUNCA `px`. Única exceção: a linha de 1px das bordas da grade, que é intencionalmente física.
-- Grade e blocos DEVEM reaproveitar as classes `.mosaico` e `.mosaico__bloco`. NUNCA reimplementar a grade por baixo.
+- Grade e blocos DEVEM reaproveitar as classes `.mosaico` e `.mosaico__bloco`.
 - Colunas com preenchimento automático DEVEM usar `auto-fill`, NUNCA `auto-fit` (auto-fit estica os blocos em retângulos e quebra a proporção 1:1).
-- Bordas da grade seguem a estratégia anti-duplicação: o container (`.mosaico`) desenha `top`/`left`; cada bloco (`.mosaico__bloco`) desenha `right`/`bottom`. NUNCA aplicar as quatro bordas ao bloco.
 - Altura de viewport DEVE usar `100dvh`, NUNCA `100vh` (que não desconta a barra de endereço móvel e causa saltos de layout).
 - Botões representados apenas por ícone DEVEM ter `aria-label` descritivo; o `<i class="bi ...">` sozinho não é acessível.
 - O `<head>` DEVE incluir `viewport-fit=cover` (habilita `env(safe-area-inset-*)`) e `theme-color` igual a `--color-bg`.
