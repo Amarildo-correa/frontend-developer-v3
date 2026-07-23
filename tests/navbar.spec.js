@@ -4,21 +4,30 @@
 //   • FAIXA inferior (largura < 441px): colunas em UMA linha na base; cada
 //     coluna mede largura ÷ N (auto-fill + 1fr).
 //   • RAIL lateral   (largura ≥ 441px): o MESMO mecanismo espelhado na
-//     vertical — N = floor(altura / 56) linhas, cada uma medindo altura ÷ N.
-//     O excedente de itens colapsa a 0px e desaparece.
+//     vertical — N linhas de `1fr` dividindo a ALTURA, cada uma medindo
+//     altura ÷ N. O excedente de itens colapsa a 0px e desaparece.
 //
 // Invariantes centrais do rail, todos verificados aqui:
 //   1. nenhuma célula se sobrepõe a outra;
-//   2. as células PREENCHEM a altura toda — sobra ≈ 0, sem meia-célula
-//      cortada nem esmagada no fim (era o defeito corrigido);
-//   3. todas as células visíveis têm o MESMO tamanho (distribuição uniforme);
-//   4. a célula nunca fica menor que o piso de 56px;
-//   5. proporção 1:1 — exata onde o motor sabe dividir comprimentos em calc()
-//      (Chromium/WebKit); nos demais, ao menos nunca distorcida.
+//   2. as células COBREM a altura toda — sobra ≈ 0, sem célula partida no fim;
+//   3. todas as células visíveis têm o MESMO tamanho;
+//   4. a célula nunca fica menor que o piso de --bloco-max;
+//   5. proporção 1:1 exata, em TODOS os motores;
+//   6. o botão de overflow aparece exatamente quando há excedente.
+//
+// COMO O 1:1 É OBTIDO (e por que já falhou no Firefox): as linhas são `1fr`,
+// então a célula mede altura ÷ N e cobre o eixo inteiro — espelho do que a
+// faixa faz na largura. O que difere entre os dois modos é o OUTRO lado da
+// célula: na faixa, largura → altura sai de graça com `aspect-ratio: 1`; na
+// vertical o inverso não existe em motor nenhum (medido), então a ESPESSURA do
+// rail repete a conta altura ÷ N. Essa divisão é por NÚMERO — N vem de uma
+// escada de @media como literal — e não `LEN / LEN`, que só Chromium/WebKit
+// fazem. A versão anterior dependia de `LEN / LEN` e caía num fallback de
+// largura fixa no Firefox, onde a célula ficava 56 × 63.
 const { test, expect } = require("@playwright/test");
 
 const RAIL_MIN_WIDTH = 441; // 27.5625rem × 16px — breakpoint do modo rail.
-const CELL_FLOOR = 56; // --bloco-max: piso do minmax das linhas do rail.
+const CELL = 56; // --bloco-max: PISO da trilha do rail (a trilha é 1fr = altura ÷ N).
 const TOL = 1.5; // tolerância em px para arredondamento de subpixel.
 
 // Coleta as métricas geométricas da navbar direto do DOM renderizado.
@@ -51,20 +60,18 @@ async function collectMetrics(page) {
             // Itens de navegação reais (todos menos o botão de overflow).
             itensReais: all.length - 1,
             maisVisivel,
-            // Quando aparece, o "mais" tem de ser a ÚLTIMA célula do rail.
-            maisEhUltimo: maisVisivel && Math.abs(maisRect.bottom - gridRect.bottom) < 2,
+            // Quando aparece, o "mais" tem de ser a ÚLTIMA CÉLULA VISÍVEL.
+            maisEhUltimo: maisVisivel && Math.abs(maisRect.bottom - last.bottom) < 2,
             visible: visible.length,
             overlapping,
             gridHeight: gridRect.height,
-            // Espaço vazio depois da última célula: é o "resto da divisão" que
-            // antes virava meia-célula esmagada. Deve ser ~0.
+            // Espaço vazio depois da última célula. Com as linhas em `1fr` ele
+            // é ~0 quando a grade está cheia — é o que prova que o mosaico vai
+            // até o fim do viewport, sem célula partida.
             leftover: visible.length ? gridRect.bottom - last.bottom : gridRect.height,
             singleRow: visible.every((r) => Math.abs(r.top - visible[0].top) < 1.5),
             heights: visible.map((r) => r.height),
             widths: visible.map((r) => r.width),
-            // O motor sabe dividir comprimento por comprimento em calc()?
-            // É o que habilita a espessura dinâmica do rail (1:1 exato).
-            exactRatioSupported: CSS.supports("width", "calc(100dvh / round(down, calc(100dvh / 3.5rem), 1))"),
         };
     });
 }
@@ -80,33 +87,30 @@ function assertRail(m, label) {
         expect(Math.abs(h - h0), `células desiguais ${label}`).toBeLessThanOrEqual(TOL);
     }
 
-    // 4. a TRILHA é sempre altura ÷ N e nunca abaixo do piso — valha ou não a
-    //    grade estar cheia, porque as N trilhas são criadas pela altura, não
-    //    pela quantidade de itens.
-    expect(h0, `célula abaixo do piso ${label}`).toBeGreaterThanOrEqual(CELL_FLOOR - TOL);
-    const expectedN = Math.floor(m.gridHeight / CELL_FLOOR);
+    // 2. As células COBREM a altura: cada trilha é `1fr`, logo mede altura ÷ N,
+    //    nunca abaixo do piso de --bloco-max.
+    expect(h0, `célula abaixo do piso ${label}`).toBeGreaterThanOrEqual(CELL - TOL);
+    const expectedN = Math.floor(m.gridHeight / CELL);
     expect(Math.abs(h0 - m.gridHeight / expectedN), `altura ≠ altura÷N ${label}`).toBeLessThanOrEqual(TOL);
 
-    // 2. Preenchimento da altura — só exigível quando há itens suficientes
-    //    para ocupar as N trilhas. Com MENOS itens que trilhas, sobrar rail
-    //    vazio embaixo é o estado correto (é o mesmo excedente-zero que faz o
-    //    botão "mais" sumir, checado no item 6). Exigir `leftover ≈ 0` aqui
-    //    reprovaria um layout íntegro só porque o HTML tem poucos botões.
+    // 5. Proporção 1:1 — exigida em TODOS os motores, sem ramo de fallback. A
+    //    espessura do rail repete a mesma conta das linhas (altura ÷ N) usando
+    //    divisão por NÚMERO, que o Firefox aceita; antes dependia de `LEN / LEN`
+    //    e lá a célula saía 56 × 63.
+    const w0 = m.widths[0];
+    expect(Math.abs(w0 - h0), `célula não é quadrada ${label}`).toBeLessThanOrEqual(TOL);
+
+    // 4. Sobra na base ZERO com a grade cheia: as N trilhas de `1fr` consomem a
+    //    altura inteira, então a última célula encosta na moldura. É o que
+    //    garante o mosaico indo até o fim do viewport, sem célula partida.
+    //    Com MENOS itens que trilhas, o rail vazio embaixo é o estado correto
+    //    (mesmo excedente-zero que esconde o botão "mais", checado no item 6).
     const gradeCheia = m.itensReais >= expectedN;
     if (gradeCheia) {
         expect(m.visible, `contagem de linhas ${label}`).toBe(expectedN);
         expect(m.leftover, `sobra na base ${label}`).toBeLessThanOrEqual(TOL);
     } else {
         expect(m.visible, `itens ocultos sem excedente ${label}`).toBe(m.itensReais);
-    }
-
-    // 5. proporção.
-    const w0 = m.widths[0];
-    if (m.exactRatioSupported) {
-        expect(Math.abs(w0 - h0), `célula não é quadrada ${label}`).toBeLessThanOrEqual(TOL);
-    } else {
-        // Fallback (Firefox): espessura fixa. Exige apenas que não distorça.
-        expect(h0 / w0, `célula distorcida ${label}`).toBeLessThan(1.5);
     }
 
     // 6. three-dots: aparece exatamente quando há excedente, e como última

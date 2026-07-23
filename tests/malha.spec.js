@@ -5,23 +5,26 @@
 // CEGO para esta classe de defeito — uma linha dobrada não move elemento
 // nenhum, então passa intacta por qualquer teste de layout.
 //
-// A MEDIDA É DE TINTA, NÃO DE CONTAGEM DE PIXELS, e o limite é um TETO:
-// quanto da fronteira está pintado com --color-line, somado ao longo da
-// varredura. A escolha vem de como os motores resolvem a fronteira fracionária
-// da célula (altura 59.83px, então cada divisória cai num offset de subpixel
-// diferente):
-//   • Chromium/WebKit ENCAIXAM a linha num pixel inteiro       → tinta ~1.0
-//   • Firefox MISTURA, pintando um pixel em alpha parcial      → tinta 0.5–1.0,
-//     variando de fronteira para fronteira descendo o rail
-// Ou seja: o antialiasing só DILUI a linha, nunca a infla além de ~1.0. Já uma
-// linha genuinamente dobrada soma ~2.0 em qualquer motor. Por isso o teto
-// absoluto discrimina os dois casos, enquanto exigir uniformidade entre as
-// linhas reprovaria o Firefox por um comportamento legítimo dele.
+// A MEDIDA É DE TINTA, NÃO DE CONTAGEM DE PIXELS, e o limite é um TETO: quanto
+// da fronteira está pintado com --color-line, somado ao longo da varredura.
+// Somar tinta (em vez de contar pixels que casam com a cor) mantém a medida
+// correta mesmo quando o motor espalha a linha por antialiasing: uma linha de
+// 1px diluída em dois pixels a 50% soma 1.0, enquanto a contagem leria "2px".
 //
-// LIMITAÇÃO CONHECIDA: no Firefox, uma linha dobrada em que as DUAS metades
-// caiam em alpha parcial pode somar ~1.0 e passar. Os seis perfis
-// Chromium/WebKit cobrem esse flanco — foi num deles que a regressão 441×240
-// apareceu.
+// LIMITAÇÃO CONHECIDA, e por que ela é aceita: as trilhas do rail são `1fr`
+// (altura ÷ N), logo o lado da célula é FRACIONÁRIO na maioria das alturas
+// (60.167px em 724, 56.733px em 1080…). Fronteira fracionária cai em subpixel,
+// e o Firefox a pinta em alpha PARCIAL — medido, a tinta varia de 0.49 a 1.00
+// descendo o mesmo rail, enquanto Chromium/WebKit encaixam tudo em 1.00. Nesse
+// regime uma linha dobrada cujas DUAS metades caiam diluídas soma ~1.0 e passa
+// pelo teto: o detector tem um ponto cego no Firefox.
+//
+// Já se tentou fechar isso com trilha INTEIRA (--bloco-max fixo), e funcionava:
+// tinta 1.00 nos três motores, dobrada 2.00. Foi revertido porque trilha
+// inteira não preenche a altura — sobrava um vão emoldurado na base que parecia
+// célula partida, e cobrir o viewport inteiro é requisito de produto. Os dois
+// não coexistem: `altura ÷ N` inteiro exigiria altura de viewport divisível por
+// N, que não se controla. Os seis perfis Chromium/WebKit cobrem esse flanco.
 //
 // Regressões nomeadas que este arquivo tranca:
 //   • "441×240": em modo rail, a aresta de fechamento do último bloco visível

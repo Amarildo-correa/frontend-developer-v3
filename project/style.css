@@ -111,6 +111,11 @@
     --lock-cols: 6;
     /* Número de colunas em que a grade TRAVA no Regime B — e o mesmo teto de colunas da navbar em modo faixa. É só isso: um limite de COLUNAS. NÃO tem relação com quantos itens a navbar tem (hoje feed.html traz 21 botões de navegação + o "mais"); a contagem de itens vive no DOM e é lida pelas quantity queries, nunca fixada em CSS. */
 
+    --rail-linhas: 1;
+    /* Contraparte VERTICAL de --lock-cols: em quantas linhas o rail divide a altura (N = quantas células de --bloco-max cabem). É a peça que permite às células cobrirem a altura inteira mantendo o 1:1 — as linhas são `1fr` (altura ÷ N) e a espessura do rail repete a mesma conta.
+       Ao contrário de --lock-cols, este valor NÃO é fixo: muda com a altura do viewport. E precisa ser um NÚMERO, não um comprimento, porque a largura sai de `altura / N` — divisão de comprimento por número, a única forma que o Firefox < 153 aceita (`LEN / LEN` só existe em Chromium/WebKit). Como CSS não converte comprimento em número sem essa divisão, N é discretizado por uma escada de @media no fim do arquivo, um degrau a cada 56px de altura — a mesma escada que já decidia quando esconder o botão "mais".
+       Este valor de 1 é o piso, válido abaixo de 114px de altura; a escada sobrescreve daí para cima. */
+
     --lock-viewport-max: 27.5rem;
     /* 440px — limite superior do Regime B (bloco chega a 73.33px = 440/6) e largura máxima da grade da navbar em modo faixa inferior. Acima disso, o Regime C assume e a navbar vira rail lateral. NOTA: media queries não aceitam var(), então o breakpoint de troca de regime (441px = 27.5625rem, ver .mosaico e .navbar abaixo) é um literal separado — se este token mudar, os breakpoints em @media precisam ser recalculados manualmente. */
 
@@ -118,8 +123,8 @@
     /* 56px — escolha deliberada de design (não derivado de --bloco-touch-min × 1.3 = 57.2px). É intencionalmente diferente do pico do Regime B (73.33px): a transição 440px→441px tem um salto visível de propósito, recuando o bloco para perto do teto de toque em vez de perpetuar o tamanho excepcional do regime travado.
        Hoje o token cumpre TRÊS papéis, todos assentados no mesmo valor de propósito:
          1. teto da célula do .mosaico no Regime C (máximo do minmax de colunas);
-         2. PISO da célula do rail — é o divisor que define N = floor(altura / 56), ou seja, quantas células cabem na altura;
-         3. espessura do rail no caminho de fallback (ver @supports adiante, onde a espessura passa a ser a célula real). */
+         2. TAMANHO da trilha do rail — a linha mede exatamente este valor, e o `auto-fill` decide quantas cabem na altura;
+         3. espessura do rail, que é esta mesma medida + as bordas. Como (2) e (3) saem do MESMO token, a célula do rail é quadrada por construção, sem divisão nenhuma no meio. */
 
     /* Safe areas (notch/Dynamic Island/home indicator no iOS; edge-to-edge no
        Chrome Android) — resolvem para 0px em telas sem essas áreas, então não
@@ -527,23 +532,22 @@ button.mosaico__bloco:active .bi {
    com os itens empilhados. O limite é N = floor(altura útil / 56): quantas
    células de --bloco-max cabem na ALTURA.
 
-   ─ Células que PREENCHEM a altura (espelho da faixa inferior) ──────────────
-   O rail usa o MESMO mecanismo da faixa: `minmax(piso, 1fr)`. Na faixa isso
-   divide a LARGURA (auto-fill conta as colunas que cabem, 1fr distribui a
-   sobra); aqui divide a ALTURA. Consequência: a célula mede exatamente
-   altura ÷ N, sem sobra e sem meia-célula esmagada no fim — antes as linhas
-   eram de 56px FIXOS e o resto da divisão virava uma faixa morta (ou uma
-   célula cortada) na base. O piso do minmax é --bloco-max (56px), então
-   N = floor(altura / 56) e a célula fica em [56px, 112px).
+   ─ Trilha INTEIRA, não elástica (e por que mudou) ──────────────────────────
+   O rail já usou o mesmo `minmax(piso, 1fr)` da faixa, esticando cada linha
+   para altura ÷ N a fim de não deixar sobra na base. Isso resolvia a sobra,
+   mas produzia célula de lado FRACIONÁRIO (59.5px, 57.25px, 56.17px…), e daí
+   vinham três defeitos medidos: a largura precisava reproduzir a mesma divisão
+   para o quadrado fechar (exigindo `round()`, ausente no Firefox < 153, que
+   ficava com célula 56 × 63); as fronteiras caíam em subpixel e o Firefox as
+   pintava em alpha parcial, deixando a malha com linhas de intensidades
+   diferentes; e essa diluição escondia linhas dobradas do detector de pintura.
 
-   ─ Duas camadas: este bloco é o FALLBACK ───────────────────────────────────
-   O que está declarado AQUI vale em todos os motores e já entrega o essencial:
-   células uniformes, altura preenchida, excedente colapsado. Mas a LARGURA
-   fica fixa em --bloco-max, então a célula sai um pouco mais alta que larga.
-   Logo abaixo, um bloco @supports refina isso onde o motor sabe calcular
-   (Chromium/WebKit), tornando a célula um quadrado exato — inclusive
-   substituindo as linhas do grid. Ler os dois em conjunto: este é a base,
-   aquele é o refinamento.
+   Hoje a trilha é --bloco-max INTEIRO e o `auto-fill` conta quantas cabem. A
+   largura do rail sai do mesmo token, então largura = altura sem divisão no
+   meio: quadrado exato em TODOS os motores, sem @supports, sem aritmética
+   paralela de contagem de linhas. Em troca, volta a sobrar até 55px de rail
+   vazio na base — vão que a moldura da .navbar fecha, e que na prática já
+   existe sempre que os itens não preenchem todas as linhas.
 
    ─ Excedente e o botão "mais" ──────────────────────────────────────────────
    O excedente some para QUALQUER quantidade de itens, sem número fixo no CSS:
@@ -558,20 +562,32 @@ button.mosaico__bloco:active .bi {
 @media (min-width: 27.5625rem) {
     .navbar {
         inset: 0 auto 0 0;
-        /* top:0 right:auto bottom:0 left:0 — altura total, ancorado à esquerda. */
+        /* top:0 right:auto bottom:0 left:0 — colado no topo E na base: o rail
+           cobre a viewport inteira, exatamente como a faixa cobre a largura
+           inteira no outro modo. */
         height: 100dvh;
-        /* Altura EXPLÍCITA do rail. Embora `inset: 0 auto 0 0` (top+bottom fixos)
-           já defina a altura pela spec de posicionamento, engines WebKit/iOS
-           tratam esse caso como indefinido de forma intermitente, fazendo o
-           `height: 100%` do .mosaico--navbar colapsar para `auto`. Sem altura de
-           bloco definida, o auto-fill de LINHAS não tem como contar quantas
-           trilhas cabem e degenera para UMA repetição — todos os botões disputam
-           a mesma linha e aparecem esmagados/sobrepostos. Fixar a altura aqui
-           (mesma unidade `dvh` já usada em html,body) remove a ambiguidade e
-           garante que a contagem de linhas sempre tenha um eixo definido. */
-        width: calc(var(--bloco-max) + 2px);
-        /* FALLBACK da espessura: 56px de célula + 1px de borda de cada lado. O bloco @supports adiante substitui isto pela largura da célula REAL (altura ÷ N), que é o que torna a célula quadrada.
-           LIMITAÇÃO CONHECIDA deste fallback: ao contrário da versão refinada, não soma --safe-area-left — e como a .navbar aplica essa safe area como padding-left, num aparelho com notch em paisagem ela comeria a coluna e estreitaria a célula. Só afeta motores sem suporte a @supports com divisão em calc() (hoje, Firefox) E com safe area lateral não nula, combinação hoje inexistente na prática. */
+        /* Altura EXPLÍCITA (além do inset) porque WebKit/iOS tratam "top+bottom
+           fixos" como altura indefinida de forma intermitente, fazendo o
+           `height: 100%` da grade colapsar para `auto` — e sem eixo de bloco
+           definido as linhas do grid degeneram para uma só, com todos os botões
+           sobrepostos. */
+        width: calc((100dvh - 2px - var(--safe-area-top)) / var(--rail-linhas) + 2px + var(--safe-area-left));
+        /* ESPESSURA = LADO DA CÉLULA, e é o que fecha o 1:1 preenchendo tudo.
+           A célula mede altura útil ÷ N (as linhas são `1fr`, ver a grade
+           abaixo); a largura repete a MESMA conta e soma as bordas e a safe
+           area lateral. Quadrado exato, com as células cobrindo a viewport de
+           ponta a ponta.
+
+           POR QUE ESTA CONTA PASSA NO FIREFOX: aqui divide-se comprimento por
+           NÚMERO (--rail-linhas vem da escada de @media como literal), e não
+           comprimento por comprimento. Medido: `LEN / LEN` → só Chromium/WebKit;
+           `LEN / número` → os três. Foi essa distinção que permitiu remover o
+           @supports e acabar com a divergência entre motores — antes o Firefox
+           caía num fallback de largura fixa e a célula saía 56 × 63.
+
+           A safe area lateral entra na soma porque a .navbar a aplica como
+           padding-left: sem somá-la, ela comeria a coluna e estreitaria a
+           célula num aparelho com notch em paisagem. */
         padding-bottom: 0;
         /* O rail não fica mais na base: a safe-area-bottom deixa de ser relevante. */
         padding-top: var(--safe-area-top);
@@ -587,8 +603,26 @@ button.mosaico__bloco:active .bi {
         /* Altura DEFINIDA, herdada do container de 100dvh — é o que a contagem de linhas precisa para saber quantas cabem. Sem isto o eixo de bloco fica indefinido e a contagem degenera (ver o comentário de `height` na .navbar acima). */
         grid-template-columns: 1fr;
         /* Uma coluna: os itens empilham. */
-        grid-template-rows: repeat(auto-fill, minmax(var(--bloco-max), 1fr));
-        /* Cria N = floor(altura / 56) linhas e ESTICA cada uma para altura ÷ N (o 1fr distribui a sobra da divisão). É o espelho exato do `minmax(piso, 1fr)` que a faixa inferior usa na largura. Sem o 1fr (linhas de 56px fixos) sobrava sempre um resto na base, que aparecia como célula cortada/esmagada. SUBSTITUÍDO pelo @supports adiante, onde a contagem passa a vir de --rail-linhas para casar exatamente com a largura. */
+        grid-template-rows: repeat(var(--rail-linhas), 1fr);
+        /* ESPELHO da faixa inferior, girado 90°. Lá é `repeat(--lock-cols, 1fr)`
+           dividindo a LARGURA; aqui é `repeat(--rail-linhas, 1fr)` dividindo a
+           ALTURA. Nos dois casos o 1fr faz as células cobrirem o eixo INTEIRO,
+           sem sobra e sem célula partida no fim.
+
+           A assimetria entre os dois modos está só em como o OUTRO lado da
+           célula é obtido. Na faixa, largura → altura sai de graça com
+           `aspect-ratio: 1` no bloco. Na vertical o inverso NÃO existe: medido
+           nos três motores, altura flexível não propaga para largura por
+           aspect-ratio — o grid dimensiona colunas antes das linhas, então na
+           hora de medir a coluna a altura ainda não existe (o teste deu 99×100
+           no Chromium/WebKit e 0×1 no Firefox). Por isso a largura do rail é
+           CALCULADA a partir do mesmo --rail-linhas, na .navbar acima.
+
+           --rail-linhas vem da escada de @media no fim do arquivo — a MESMA que
+           já discretizava a altura para o botão "mais". Ela existe porque N
+           precisa ser um NÚMERO, e derivar número a partir de comprimentos
+           exigiria `LEN / LEN`, que o Firefox < 153 não faz. A escada entrega o
+           literal pronto, sem divisão nenhuma. */
         grid-auto-rows: 0;
         /* Os itens que sobram caem em linhas implícitas de 0px → somem. Unbounded, sem meia-célula. */
     }
@@ -637,69 +671,6 @@ button.mosaico__bloco:active .bi {
        cairia num pixel novo e duplicaria também. */
     .mosaico--navbar .mosaico__bloco:active:not(:first-child) {
         border-top: 1px solid var(--color-line);
-    }
-}
-
-/* ═══ ESPESSURA DO RAIL = TAMANHO DA CÉLULA (proporção 1:1 exata) ════════════
-   As linhas acima já garantem que a célula tenha ALTURA = altura ÷ N em todos
-   os motores. Falta a LARGURA acompanhar, para a célula ficar quadrada.
-
-   Por que isso não sai de graça: na faixa inferior a propagação é largura →
-   altura, e funciona porque altura é dirigida pelo CONTEÚDO (o aspect-ratio do
-   bloco estica a faixa). No rail a propagação teria de ser altura → largura, e
-   largura é dirigida pelo CONTAINER — além disso o grid dimensiona as COLUNAS
-   antes das LINHAS, então na hora de medir a coluna a altura da linha ainda não
-   existe. A assimetria é do próprio CSS, não deste layout.
-
-   Solução: calcular N e o tamanho da célula aritmeticamente. Requer dividir
-   comprimento por comprimento dentro de calc() — CSS Values 4, hoje suportado
-   por Chromium e WebKit (cobre Android, iOS, iPadOS e Chrome/Edge/Safari), mas
-   ainda NÃO pelo Firefox. Por isso vem atrás de @supports: onde o motor sabe
-   calcular, a célula fica exatamente quadrada; onde não sabe, a regra inteira é
-   ignorada e vale o fallback de espessura fixa declarado acima.
-
-   O QUE ESTE BLOCO SUBSTITUI: não é só a largura. Ele também reescreve
-   `grid-template-rows`, para que a contagem de linhas do grid e a largura do
-   rail venham do MESMO --rail-linhas. Enquanto eram duas contagens paralelas
-   (auto-fill de um lado, aritmética do outro) elas divergiam nas fronteiras e
-   o 1:1 quebrava — ver o comentário da regra, adiante.
-
-   CUSTO DO FALLBACK, medido: sem o refinamento a célula fica mais alta que
-   larga, e o desvio cresce quanto MENOS linhas cabem — porque o 1fr distribui
-   o resto da divisão entre poucas linhas. Em alturas típicas de desktop
-   (700–1100px, N de 12 a 19) fica em 2%–6%, visualmente imperceptível; numa
-   janela baixa como 281px (N = 4) chega a 24% (célula 56 × 69,75). Em nenhum
-   caso há sobra, corte ou esmagamento — o defeito que de fato importava
-   corrigir está resolvido nos dois caminhos. Manter esse trade-off no
-   fallback foi decisão de projeto (o alvo declarado é Chromium/WebKit); a
-   alternativa seria voltar às linhas fixas e reintroduzir a sobra na base. */
-@supports (width: calc(100dvh / round(down, calc(100dvh / 3.5rem), 1))) {
-    @media (min-width: 27.5625rem) {
-        :root {
-            --rail-altura-util: calc(100dvh - 2px - var(--safe-area-top));
-            /* Altura REAL que a grade recebe: o viewport menos as bordas de 1px de cima e de baixo da .navbar e menos o recuo do notch. Precisa bater com o content box do container, porque é dela que saem tanto o número de linhas quanto o lado da célula — se divergisse do espaço real, as linhas não preencheriam a altura exatamente. */
-            --rail-linhas: max(1, round(down, calc((var(--rail-altura-util) + 0.05px) / var(--bloco-max)), 1));
-            /* N = floor(altura útil / 56) — quantas células cabem. O max(1, …) evita divisão por zero em alturas absurdamente pequenas (viewport menor que uma célula).
-               O +0.05px torna a transição de N DETERMINÍSTICA entre motores. Nas alturas em que a altura útil é múltiplo exato de 56, o `100dvh` do WebKit resolve alguns centésimos abaixo do valor inteiro e o floor cairia um degrau antes do Chromium — as duas engines discordariam sobre quantas linhas cabem exatamente na fronteira. O epsilon (bem abaixo de um pixel de dispositivo) alinha as duas no mesmo N, que é o que permite à escada de degraus lá embaixo usar um limiar único.
-               NOTA: este epsilon só é seguro porque o grid consome o MESMO --rail-linhas (ver .mosaico--navbar abaixo). Enquanto as linhas vinham de um `auto-fill` independente, qualquer epsilon aqui criava divergência entre a contagem do motor e a da aritmética, e era justamente isso que quebrava o 1:1 nas fronteiras. */
-            --rail-celula: calc(var(--rail-altura-util) / var(--rail-linhas));
-            /* Lado da célula = altura ÷ N. Reusado como espessura do rail (abaixo) e como reserva do <main>. */
-        }
-
-        .mosaico--navbar {
-            grid-template-rows: repeat(var(--rail-linhas), 1fr);
-            /* CHAVE do 1:1 exato. Antes as linhas vinham de `auto-fill` e a largura de uma aritmética PARALELA que tentava reproduzir a mesma contagem — e as duas divergiam nas fronteiras, porque nos múltiplos exatos de 56 os motores discordam: medido, o Chromium conta 12 linhas em 672px enquanto o WebKit conta 15 em 896px. Qualquer epsilon que consertasse um quebrava o outro. Aqui o grid passa a usar EXATAMENTE o mesmo --rail-linhas que dimensiona a largura, então a contagem é uma só, por construção — não há o que divergir. O `1fr` continua distribuindo a altura igualmente, como o minmax(…, 1fr) do fallback. */
-        }
-
-        .navbar {
-            width: calc(var(--rail-celula) + 2px + var(--safe-area-left));
-            /* Espessura do rail = lado da célula + 1px de borda de cada lado + a safe area esquerda. A safe area entra aqui porque a .navbar a aplica como padding-left: sem somá-la à largura, ela comeria a coluna e a célula deixaria de ser quadrada em telas com notch em paisagem. Agora largura = altura: quadrado exato. */
-        }
-
-        main {
-            padding-left: calc(var(--rail-celula) + 2px + var(--safe-area-left));
-            /* A reserva do conteúdo acompanha a espessura dinâmica do rail. */
-        }
     }
 }
 
@@ -766,16 +737,14 @@ main {
 
 /* No modo rail lateral, a reserva vertical do <main> deixa de fazer sentido
    (a navbar não ocupa mais a base) e vira uma reserva HORIZONTAL, espelhando a
-   espessura do rail. Como essa espessura tem dois valores possíveis (fixa no
-   fallback, dinâmica no @supports), a reserva também tem: o valor de fallback
-   fica aqui e o refinado é declarado junto da largura refinada, para os dois
-   nunca saírem de sincronia. */
+   espessura do rail — que é --bloco-max mais as bordas, valor único em todos
+   os motores desde que a trilha virou inteira. */
 @media (min-width: 27.5625rem) {
     main {
         padding-bottom: 0;
         /* Cancela a reserva de rodapé herdada da regra padrão acima — não há mais navbar na base. */
-        padding-left: calc(var(--bloco-max) + 2px + var(--safe-area-left));
-        /* FALLBACK: espelha a espessura fixa do rail (56px + 2px de borda) mais a safe area esquerda, para o conteúdo não nascer por baixo dele. Substituído pelo @supports, onde a reserva passa a acompanhar a célula real. */
+        padding-left: calc((100dvh - 2px - var(--safe-area-top)) / var(--rail-linhas) + 2px + var(--safe-area-left));
+        /* Espelha EXATAMENTE a largura da .navbar (mesma expressão), para o conteúdo não nascer por baixo do rail. Como a espessura agora acompanha a altura do viewport (altura ÷ N), esta reserva acompanha junto — as duas têm de mudar sempre juntas. */
     }
 }
 
@@ -794,8 +763,7 @@ main {
    Mecânica, em duas partes:
      1. Por padrão, no rail, o "mais" APARECE e é ancorado na ÚLTIMA linha
         visível por `grid-row: -2 / -1` — a última linha do grid EXPLÍCITO,
-        seja ela criada pelo auto-fill (fallback) ou pelo repeat(--rail-linhas)
-        do @supports; a ancoragem funciona igual nos dois. O item real que
+        criada pelo auto-fill sobre as trilhas de --bloco-max. O item real que
         ocuparia esse lugar é empurrado pelo auto-placement para uma linha
         implícita de 0px e some — exatamente o mesmo destino do resto do
         excedente.
@@ -816,198 +784,335 @@ main {
         display: flex;
         /* No rail o "mais" nasce VISÍVEL; a escada abaixo o esconde quando tudo couber. É o inverso da faixa, onde ele nasce oculto e as quantity queries o revelam — a diferença existe porque aqui o caso comum (mais itens que linhas) é o de overflow. */
         grid-row: -2 / -1;
-        /* Ancora na última linha do grid EXPLÍCITO. Não depende de saber quanto vale N: -1 é sempre a última linha explícita, seja qual for a altura e seja qual for o caminho que a criou (auto-fill no fallback, repeat(--rail-linhas) no @supports). */
+        /* Ancora na última linha do grid EXPLÍCITO. Não depende de saber quanto vale N: -1 é sempre a última linha explícita, seja qual for a altura. */
     }
 }
 
 /* Escada de degraus — um por N (linhas que cabem). Gerada mecanicamente:
-   min-height = N × 56px + 2px de borda; seletor = :nth-child(-n + N+1). */
+   min-height = N × 56px + 2px de borda; seletor = :nth-child(-n + N+1).
+
+   Cada degrau faz DUAS coisas, pelo mesmo N e no mesmo limiar:
+     1. define --rail-linhas, que dimensiona as linhas do grid (1fr cada) E a
+        espessura do rail (altura ÷ N) — é o que mantém a célula quadrada
+        cobrindo a altura inteira, em todos os motores;
+     2. esconde o botão "mais" quando os itens couberem nas N linhas.
+   Manter os dois no mesmo bloco é o que garante que a contagem usada para
+   dimensionar e a usada para decidir o overflow nunca divirjam — quando eram
+   duas contagens paralelas, elas discordavam nas fronteiras e o 1:1 quebrava.
+
+   Por que uma escada e não aritmética: N tem de ser um NÚMERO (a largura sai de
+   `altura / N`), e derivar número a partir de comprimentos exigiria `LEN / LEN`,
+   ausente no Firefox < 153. O degrau entrega o literal pronto.
+
+   A escada cobre N de 3 a 40 (até 2242px de altura). Abaixo dela valem o piso
+   de --rail-linhas (1) e o degrau de N=2 logo a seguir; acima, N satura em 40 e
+   as células passam a crescer além de 56px — continuam quadradas e preenchendo,
+   que é o que importa. */
+@media (min-width: 27.5625rem) and (min-height: 7.125rem) {
+    :root {
+        --rail-linhas: 2;
+    }
+}
 @media (min-width: 27.5625rem) and (min-height: 10.625rem) {
+    :root {
+        --rail-linhas: 3;
+    }
     .mosaico__bloco--mais:nth-child(-n + 4) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 14.125rem) {
+    :root {
+        --rail-linhas: 4;
+    }
     .mosaico__bloco--mais:nth-child(-n + 5) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 17.625rem) {
+    :root {
+        --rail-linhas: 5;
+    }
     .mosaico__bloco--mais:nth-child(-n + 6) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 21.125rem) {
+    :root {
+        --rail-linhas: 6;
+    }
     .mosaico__bloco--mais:nth-child(-n + 7) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 24.625rem) {
+    :root {
+        --rail-linhas: 7;
+    }
     .mosaico__bloco--mais:nth-child(-n + 8) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 28.125rem) {
+    :root {
+        --rail-linhas: 8;
+    }
     .mosaico__bloco--mais:nth-child(-n + 9) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 31.625rem) {
+    :root {
+        --rail-linhas: 9;
+    }
     .mosaico__bloco--mais:nth-child(-n + 10) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 35.125rem) {
+    :root {
+        --rail-linhas: 10;
+    }
     .mosaico__bloco--mais:nth-child(-n + 11) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 38.625rem) {
+    :root {
+        --rail-linhas: 11;
+    }
     .mosaico__bloco--mais:nth-child(-n + 12) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 42.125rem) {
+    :root {
+        --rail-linhas: 12;
+    }
     .mosaico__bloco--mais:nth-child(-n + 13) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 45.625rem) {
+    :root {
+        --rail-linhas: 13;
+    }
     .mosaico__bloco--mais:nth-child(-n + 14) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 49.125rem) {
+    :root {
+        --rail-linhas: 14;
+    }
     .mosaico__bloco--mais:nth-child(-n + 15) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 52.625rem) {
+    :root {
+        --rail-linhas: 15;
+    }
     .mosaico__bloco--mais:nth-child(-n + 16) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 56.125rem) {
+    :root {
+        --rail-linhas: 16;
+    }
     .mosaico__bloco--mais:nth-child(-n + 17) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 59.625rem) {
+    :root {
+        --rail-linhas: 17;
+    }
     .mosaico__bloco--mais:nth-child(-n + 18) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 63.125rem) {
+    :root {
+        --rail-linhas: 18;
+    }
     .mosaico__bloco--mais:nth-child(-n + 19) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 66.625rem) {
+    :root {
+        --rail-linhas: 19;
+    }
     .mosaico__bloco--mais:nth-child(-n + 20) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 70.125rem) {
+    :root {
+        --rail-linhas: 20;
+    }
     .mosaico__bloco--mais:nth-child(-n + 21) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 73.625rem) {
+    :root {
+        --rail-linhas: 21;
+    }
     .mosaico__bloco--mais:nth-child(-n + 22) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 77.125rem) {
+    :root {
+        --rail-linhas: 22;
+    }
     .mosaico__bloco--mais:nth-child(-n + 23) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 80.625rem) {
+    :root {
+        --rail-linhas: 23;
+    }
     .mosaico__bloco--mais:nth-child(-n + 24) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 84.125rem) {
+    :root {
+        --rail-linhas: 24;
+    }
     .mosaico__bloco--mais:nth-child(-n + 25) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 87.625rem) {
+    :root {
+        --rail-linhas: 25;
+    }
     .mosaico__bloco--mais:nth-child(-n + 26) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 91.125rem) {
+    :root {
+        --rail-linhas: 26;
+    }
     .mosaico__bloco--mais:nth-child(-n + 27) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 94.625rem) {
+    :root {
+        --rail-linhas: 27;
+    }
     .mosaico__bloco--mais:nth-child(-n + 28) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 98.125rem) {
+    :root {
+        --rail-linhas: 28;
+    }
     .mosaico__bloco--mais:nth-child(-n + 29) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 101.625rem) {
+    :root {
+        --rail-linhas: 29;
+    }
     .mosaico__bloco--mais:nth-child(-n + 30) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 105.125rem) {
+    :root {
+        --rail-linhas: 30;
+    }
     .mosaico__bloco--mais:nth-child(-n + 31) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 108.625rem) {
+    :root {
+        --rail-linhas: 31;
+    }
     .mosaico__bloco--mais:nth-child(-n + 32) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 112.125rem) {
+    :root {
+        --rail-linhas: 32;
+    }
     .mosaico__bloco--mais:nth-child(-n + 33) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 115.625rem) {
+    :root {
+        --rail-linhas: 33;
+    }
     .mosaico__bloco--mais:nth-child(-n + 34) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 119.125rem) {
+    :root {
+        --rail-linhas: 34;
+    }
     .mosaico__bloco--mais:nth-child(-n + 35) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 122.625rem) {
+    :root {
+        --rail-linhas: 35;
+    }
     .mosaico__bloco--mais:nth-child(-n + 36) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 126.125rem) {
+    :root {
+        --rail-linhas: 36;
+    }
     .mosaico__bloco--mais:nth-child(-n + 37) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 129.625rem) {
+    :root {
+        --rail-linhas: 37;
+    }
     .mosaico__bloco--mais:nth-child(-n + 38) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 133.125rem) {
+    :root {
+        --rail-linhas: 38;
+    }
     .mosaico__bloco--mais:nth-child(-n + 39) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 136.625rem) {
+    :root {
+        --rail-linhas: 39;
+    }
     .mosaico__bloco--mais:nth-child(-n + 40) {
         display: none;
     }
 }
 @media (min-width: 27.5625rem) and (min-height: 140.125rem) {
+    :root {
+        --rail-linhas: 40;
+    }
     .mosaico__bloco--mais:nth-child(-n + 41) {
         display: none;
     }

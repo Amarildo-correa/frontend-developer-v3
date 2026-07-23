@@ -17,6 +17,17 @@ const { test, expect } = require("@playwright/test");
 // Sem transição: elimina a chance de capturar o quadro no meio de um fade.
 test.use({ reducedMotion: "reduce" });
 
+// Tolerância de diferença, como FRAÇÃO DA IMAGEM INTEIRA — e é aí que mora a
+// armadilha: a navbar ocupa uma fatia pequena da página, então uma tolerância
+// generosa esconde mudanças grandes NELA. Medido: com 0.01 (1%), uma alteração
+// que estreitou o rail em 4px ao longo de 720px de altura (~0.3% da imagem)
+// passou despercebida em 15 dos 36 baselines — o teste dava verde com o
+// baseline desatualizado. 0.001 mantém margem para ruído de antialiasing e
+// ainda pega deslocamento de layout dessa ordem.
+// Se um dia precisar afrouxar, prefira capturar o ELEMENTO em vez da página:
+// aí o denominador vira o componente, não o viewport.
+const TOLERANCIA = 0.001;
+
 const SELETOR = ".mosaico--navbar .mosaico__bloco";
 
 // Os ícones (Bootstrap Icons) e a fonte vêm de CDN. Sem esperar o webfont
@@ -32,13 +43,13 @@ test.describe("regressão visual", () => {
     test("feed em repouso", async ({ page }) => {
         await page.goto("/feed.html");
         await esperarFontes(page);
-        await expect(page).toHaveScreenshot("feed-repouso.png", { maxDiffPixelRatio: 0.01 });
+        await expect(page).toHaveScreenshot("feed-repouso.png", { maxDiffPixelRatio: TOLERANCIA });
     });
 
     test("mosaico de preenchimento (index)", async ({ page }) => {
         await page.goto("/index.html");
         await esperarFontes(page);
-        await expect(page).toHaveScreenshot("index-mosaico.png", { maxDiffPixelRatio: 0.01 });
+        await expect(page).toHaveScreenshot("index-mosaico.png", { maxDiffPixelRatio: TOLERANCIA });
     });
 
     // Cobre a APARÊNCIA do estado pressionado — preenchimento, cor e escala do
@@ -60,7 +71,7 @@ test.describe("regressão visual", () => {
             { timeout: 5000 },
         );
 
-        await expect(navbar).toHaveScreenshot("navbar-pressionado.png", { maxDiffPixelRatio: 0.01 });
+        await expect(navbar).toHaveScreenshot("navbar-pressionado.png", { maxDiffPixelRatio: TOLERANCIA });
         await page.mouse.up();
     });
 
@@ -71,6 +82,6 @@ test.describe("regressão visual", () => {
         await page.setViewportSize({ width: 441, height: 240 });
         await page.goto("/feed.html");
         await esperarFontes(page);
-        await expect(page).toHaveScreenshot("rail-441x240.png", { maxDiffPixelRatio: 0.01 });
+        await expect(page).toHaveScreenshot("rail-441x240.png", { maxDiffPixelRatio: TOLERANCIA });
     });
 });

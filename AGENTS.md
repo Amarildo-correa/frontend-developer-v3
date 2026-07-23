@@ -155,7 +155,13 @@ const tinta = espessuraDaLinha(faixa, corLinha); // ~1.0 = linha normal; ~2.0 = 
 Duas armadilhas que já custaram diagnóstico errado, ambas resolvidas dentro do helper:
 
 - **A faixa sai em px de DISPOSITIVO.** Num perfil com `dsf` 2.625, uma faixa de 1px de CSS chega com 3 fileiras no PNG; achatar todas conta cada pixel de linha 3× e infla a medida na mesma proporção. `capturarFaixa` lê só a fileira do meio e devolve o `dsf` para converter de volta a px de CSS.
-- **Medir TINTA, não contar pixels.** Chromium/WebKit encaixam a linha num pixel inteiro; o **Firefox mistura**, pintando um pixel em alpha parcial — a MESMA linha de 1px lê `1.0` num motor e `0.5` no outro, variando de fronteira para fronteira descendo o rail. Contagem por igualdade de cor gera falso positivo; soma de tinta não. E como o antialiasing só DILUI (nunca infla além de ~1.0), o que denuncia uma linha dobrada é um **teto absoluto** — exigir uniformidade entre as linhas reprovaria o Firefox por comportamento legítimo.
+- **Medir TINTA, não contar pixels.** Somar quanto de `--color-line` existe na faixa mantém a medida correta quando o motor espalha a linha por antialiasing: 1px diluído em dois pixels a 50% soma `1.0`, enquanto a contagem leria "2px". Como o antialiasing só DILUI (nunca infla além de ~1.0), o que denuncia linha dobrada é um **teto absoluto**.
+
+**Trilha fracionária é a causa raiz de quase todo defeito de pintura aqui.** Quando o lado da célula não é inteiro, as fronteiras caem em subpixel e o **Firefox as pinta em alpha parcial** (Chromium/WebKit encaixam no pixel). Isso produz linhas de intensidades diferentes na mesma malha E abre um ponto cego no detector: duas metades diluídas somam ~1.0 e passam por linha simples.
+
+TRADE-OFF ACEITO, não descuido: as células precisam COBRIR o eixo inteiro (largura na faixa, altura no rail), o que obriga a trilha a ser `1fr` = eixo ÷ N — fracionário na maioria dos tamanhos, porque não se controla a dimensão do viewport. Trilha inteira elimina a diluição (medido: 1.00 nos três motores, dobrada 2.00) mas deixa um vão emoldurado na ponta, que parece célula partida. Os dois não coexistem. Escolheu-se cobrir o eixo; a diluição do Firefox e o ponto cego são o preço, e os seis perfis Chromium/WebKit cobrem esse flanco.
+
+Ao mexer em dimensionamento de célula, saiba de que lado do trade-off está mexendo — e não "conserte" a diluição calibrando o detector, que só esconderia o ponto cego.
 
 Invariantes já cobertos por `malha.spec.js`, e como cada um falha na prática:
 
