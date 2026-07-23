@@ -15,7 +15,7 @@ Desenvolver protótipos de frontend **mobile-first**, baseados em grid, utilizan
 
 - Todos os arquivos `.html` DEVEM compartilhar exclusivamente os estilos definidos em [`project/style.css`](project/style.css).
 - NÃO utilizar gradientes (`linear-gradient`, `radial-gradient`, `conic-gradient` ou equivalentes).
-- NÃO definir `background`, `background-color` ou qualquer cor de fundo em elementos de superfície (`surface`). A cor do fundo sempre será `--color-bg`, por isso todos os elementos terão bordas (linhas) para separá-los.
+- Cor de fundo em superfícies é PERMITIDA, desde que venha de token (ex.: `var(--color-surface)`). As bordas do mosaico permanecem: a malha de 1px em `--color-line` é o que estrutura o layout, e diferença de fundo não a substitui — as duas coexistem.
 - NÃO utilizar sombras (`box-shadow`, `filter: drop-shadow()` ou equivalentes).
 - NÃO utilizar cantos arredondados (`border-radius`). Todos os componentes DEVEM possuir cantos retos (`border-radius: 0`).
 - Todos os valores (cores, medidas, z-index) DEVEM vir de tokens em `:root` (ex.: `var(--color-line)`, `var(--bloco-padding)`). NÃO usar valores hardcoded no corpo das regras.
