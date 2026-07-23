@@ -74,20 +74,31 @@ function assertRail(m, label) {
     expect(m.overlapping, `sobreposição ${label}`).toBe(0);
     expect(m.visible, `nenhuma célula visível ${label}`).toBeGreaterThan(0);
 
-    // 2. preenche a altura toda — sem resto na base.
-    expect(m.leftover, `sobra na base ${label}`).toBeLessThanOrEqual(TOL);
-
     // 3. todas as células visíveis têm o mesmo tamanho.
     const h0 = m.heights[0];
     for (const h of m.heights) {
         expect(Math.abs(h - h0), `células desiguais ${label}`).toBeLessThanOrEqual(TOL);
     }
 
-    // 4. nunca abaixo do piso; e a célula é exatamente altura ÷ N.
+    // 4. a TRILHA é sempre altura ÷ N e nunca abaixo do piso — valha ou não a
+    //    grade estar cheia, porque as N trilhas são criadas pela altura, não
+    //    pela quantidade de itens.
     expect(h0, `célula abaixo do piso ${label}`).toBeGreaterThanOrEqual(CELL_FLOOR - TOL);
     const expectedN = Math.floor(m.gridHeight / CELL_FLOOR);
-    expect(m.visible, `contagem de linhas ${label}`).toBe(expectedN);
     expect(Math.abs(h0 - m.gridHeight / expectedN), `altura ≠ altura÷N ${label}`).toBeLessThanOrEqual(TOL);
+
+    // 2. Preenchimento da altura — só exigível quando há itens suficientes
+    //    para ocupar as N trilhas. Com MENOS itens que trilhas, sobrar rail
+    //    vazio embaixo é o estado correto (é o mesmo excedente-zero que faz o
+    //    botão "mais" sumir, checado no item 6). Exigir `leftover ≈ 0` aqui
+    //    reprovaria um layout íntegro só porque o HTML tem poucos botões.
+    const gradeCheia = m.itensReais >= expectedN;
+    if (gradeCheia) {
+        expect(m.visible, `contagem de linhas ${label}`).toBe(expectedN);
+        expect(m.leftover, `sobra na base ${label}`).toBeLessThanOrEqual(TOL);
+    } else {
+        expect(m.visible, `itens ocultos sem excedente ${label}`).toBe(m.itensReais);
+    }
 
     // 5. proporção.
     const w0 = m.widths[0];

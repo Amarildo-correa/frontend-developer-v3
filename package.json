@@ -10,6 +10,11 @@
     "test:ios": "playwright test --project=ios-iphone-15 --project=ios-iphone-se",
     "test:tablet": "playwright test --project=tablet-galaxy-tab-s9 --project=tablet-ipad-pro-11",
     "test:desktop": "playwright test --project=desktop-chromium --project=desktop-firefox --project=desktop-webkit",
+    "test:navbar": "playwright test tests/navbar.spec.js",
+    "test:malha": "playwright test tests/malha.spec.js",
+    "test:a11y": "playwright test tests/a11y.spec.js",
+    "test:visual": "playwright test tests/visual.spec.js",
+    "test:visual:update": "playwright test tests/visual.spec.js --update-snapshots",
     "test:ui": "playwright test --ui",
     "test:report": "playwright show-report"
   },
@@ -26,6 +31,9 @@
   },
   "homepage": "https://github.com/Amarildo-correa/frontend-developer-v3#readme",
   "devDependencies": {
-    "@playwright/test": "^1.61.1"
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
+    "axe-core": "^4.12.1",
+    "pngjs": "^7.0.0"
   }
 }
