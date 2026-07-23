@@ -4,7 +4,6 @@
   "description": "See [AGENTS.md](AGENTS.md).",
   "main": "index.js",
   "scripts": {
-    "pw:install": "playwright install",
     "test": "playwright test",
     "test:android": "playwright test --project=android-pixel-7 --project=android-galaxy-s24",
     "test:ios": "playwright test --project=ios-iphone-15 --project=ios-iphone-se",
@@ -16,7 +15,9 @@
     "test:visual": "playwright test tests/visual.spec.js",
     "test:visual:update": "playwright test tests/visual.spec.js --update-snapshots",
     "test:ui": "playwright test --ui",
-    "test:report": "playwright show-report"
+    "test:report": "playwright show-report",
+    "docker:build": "docker compose build",
+    "docker:test": "docker compose run --rm tests"
   },
   "repository": {
     "type": "git",

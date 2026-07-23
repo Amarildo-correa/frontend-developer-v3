@@ -1,0 +1,12 @@
+services:
+  tests:
+    build: .
+    volumes:
+      - ./project:/app/project
+      - ./tests:/app/tests
+      - ./playwright.config.js:/app/playwright.config.js
+      - ./playwright-report:/app/playwright-report
+      - ./test-results:/app/test-results
+    environment:
+      - CI=${CI:-}
+    command: npm test

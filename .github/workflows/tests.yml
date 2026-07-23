@@ -1,0 +1,34 @@
+name: Testes
+
+# Roda a suíte Playwright (via Docker) em todo push na main e em toda PR.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Builda a imagem de testes
+        run: docker compose build
+
+      - name: Roda a suíte via Docker
+        run: docker compose run --rm tests
+
+      # test-results/ e playwright-report/ são bind mounts (ver docker-compose.yml),
+      # então já ficam no filesystem do runner — só falta preservá-los como artefato
+      # antes da VM ser destruída.
+      - name: Sobe relatório e evidências em caso de falha
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

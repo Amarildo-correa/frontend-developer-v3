@@ -35,27 +35,27 @@ Cada perfil simula um dispositivo real via **device descriptor oficial**
 
 ### Arquivos
 
-| Arquivo                                                  | Papel                                                                                                                                     |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| [`playwright.config.js`](playwright.config.js)           | Config: a matriz de `projects` (perfis), `webServer` e `baseURL`.                                                                         |
-| [`tests/static-server.mjs`](tests/static-server.mjs)     | Servidor estático sem dependências que serve `project/` com `Cache-Control: no-store` (garante que o teste leia sempre o CSS/HTML atual). |
-| [`tests/helpers/pixels.js`](tests/helpers/pixels.js)     | Leitura de pixel renderizado: decodifica PNG (`pngjs`), lê tokens do `:root`, mede tinta de linha e contraste WCAG.                        |
-| [`tests/navbar.spec.js`](tests/navbar.spec.js)           | Geometria do mosaico (retângulos): sobreposição, uniformidade, proporção 1:1, overflow do botão "mais".                                    |
-| [`tests/malha.spec.js`](tests/malha.spec.js)             | Pintura da malha: nenhuma divisória dobrada ou ausente, em repouso e com bloco pressionado.                                                |
-| [`tests/a11y.spec.js`](tests/a11y.spec.js)               | Acessibilidade: varredura `axe-core` + alvo de toque 44px, `aria-label` e foco visível.                                                    |
-| [`tests/visual.spec.js`](tests/visual.spec.js)           | Regressão visual: compara o render inteiro contra baselines versionadas.                                                                   |
+| Arquivo                                              | Papel                                                                                                                                     |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| [`playwright.config.js`](playwright.config.js)       | Config: a matriz de `projects` (perfis), `webServer` e `baseURL`.                                                                         |
+| [`tests/static-server.mjs`](tests/static-server.mjs) | Servidor estático sem dependências que serve `project/` com `Cache-Control: no-store` (garante que o teste leia sempre o CSS/HTML atual). |
+| [`tests/helpers/pixels.js`](tests/helpers/pixels.js) | Leitura de pixel renderizado: decodifica PNG (`pngjs`), lê tokens do `:root`, mede tinta de linha e contraste WCAG.                       |
+| [`tests/navbar.spec.js`](tests/navbar.spec.js)       | Geometria do mosaico (retângulos): sobreposição, uniformidade, proporção 1:1, overflow do botão "mais".                                   |
+| [`tests/malha.spec.js`](tests/malha.spec.js)         | Pintura da malha: nenhuma divisória dobrada ou ausente, em repouso e com bloco pressionado.                                               |
+| [`tests/a11y.spec.js`](tests/a11y.spec.js)           | Acessibilidade: varredura `axe-core` + alvo de toque 44px, `aria-label` e foco visível.                                                   |
+| [`tests/visual.spec.js`](tests/visual.spec.js)       | Regressão visual: compara o render inteiro contra baselines versionadas.                                                                  |
 
 ### As quatro camadas, e o que cada uma NÃO vê
 
 Cada camada é cega para o que a seguinte cobre. Um agente que rode só uma delas
 vai dar por concluída uma tarefa que quebrou as outras três.
 
-| Camada        | Instrumento                    | Pega                                     | É CEGA para                                              |
-| ------------- | ------------------------------ | ---------------------------------------- | -------------------------------------------------------- |
-| Geometria     | `getBoundingClientRect()`      | layout: sobreposição, célula esmagada    | tudo que é PINTURA — cor, espessura de linha, contraste  |
-| Pintura       | leitura de pixel (`pngjs`)     | linha dobrada/ausente nas fronteiras     | qualquer região que não foi explicitamente varrida       |
-| Acessibilidade| `axe-core` + medidas de alvo   | rótulo ausente, contraste, alvo pequeno  | estética, alinhamento, regressão de aparência            |
-| Visual        | `toHaveScreenshot()` (baseline)| a imagem INTEIRA: o que ninguém previu   | intenção — só sabe que MUDOU, não se a mudança é correta |
+| Camada         | Instrumento                     | Pega                                    | É CEGA para                                              |
+| -------------- | ------------------------------- | --------------------------------------- | -------------------------------------------------------- |
+| Geometria      | `getBoundingClientRect()`       | layout: sobreposição, célula esmagada   | tudo que é PINTURA — cor, espessura de linha, contraste  |
+| Pintura        | leitura de pixel (`pngjs`)      | linha dobrada/ausente nas fronteiras    | qualquer região que não foi explicitamente varrida       |
+| Acessibilidade | `axe-core` + medidas de alvo    | rótulo ausente, contraste, alvo pequeno | estética, alinhamento, regressão de aparência            |
+| Visual         | `toHaveScreenshot()` (baseline) | a imagem INTEIRA: o que ninguém previu  | intenção — só sabe que MUDOU, não se a mudança é correta |
 
 Nenhuma substitui as outras: a de pintura existe porque a de geometria não vê
 uma borda de 2px; a visual existe porque a de pintura só olha onde mandaram.
@@ -80,50 +80,55 @@ plataforma inteira.
 ### Instalação (só na primeira vez, ou em máquina nova)
 
 ```bash
-npm install            # @playwright/test, @axe-core/playwright, axe-core, pngjs
-npm run pw:install     # baixa os navegadores (Chromium, Firefox, WebKit)
+docker compose build     # imagem com Node 24, Playwright e os browsers (Chromium, Firefox, WebKit)
 ```
 
-O `webServer` sobe sozinho — NÃO é preciso iniciar servidor manualmente.
+Build e execução acontecem **somente dentro do container** — NUNCA rodar `npm install`, `playwright install` ou os testes diretamente no host.
 
-Ferramental instalado, e por que cada peça existe:
+O `webServer` sobe sozinho dentro do container — NÃO é preciso iniciar servidor manualmente.
 
-| Pacote                  | Para quê                                                                                            |
-| ----------------------- | ---------------------------------------------------------------------------------------------------- |
-| `@playwright/test`      | Runner, matriz de dispositivos e `toHaveScreenshot()` (regressão visual, embutido).                  |
-| `@axe-core/playwright`  | Varredura WCAG automática dentro da página.                                                          |
-| `pngjs`                 | Decodifica o PNG do screenshot para ler o RGB de um pixel — é o que torna a camada de pintura possível. |
+**Para um agente de IA rodando `docker compose build`:** o download dos três browsers (~500MB) só acontece na primeira vez, ou quando `Dockerfile`/`package.json`/`package-lock.json` mudam e invalidam o cache de camada — nas execuções seguintes o Docker reaproveita a imagem e o build é quase instantâneo. Ainda assim, sempre que rodar o build (mesmo sabendo que pode ser a versão longa), encane a saída por `| tail -N` — as barras de progresso de download geram uma quantidade de texto desproporcional ao que interessa. `docker compose run --rm tests` não tem esse problema: a saída é só o relatório normal do Playwright.
+
+Ferramental instalado na imagem, e por que cada peça existe:
+
+| Pacote                 | Para quê                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `@playwright/test`     | Runner, matriz de dispositivos e `toHaveScreenshot()` (regressão visual, embutido).                     |
+| `@axe-core/playwright` | Varredura WCAG automática dentro da página.                                                             |
+| `pngjs`                | Decodifica o PNG do screenshot para ler o RGB de um pixel — é o que torna a camada de pintura possível. |
 
 ### Executar
 
 ```bash
-npm test                 # TUDO: 4 arquivos × 9 perfis (~1 min)
+docker compose run --rm tests                 # TUDO: 4 arquivos × 9 perfis (~1 min)
 
-npm run test:android     # por plataforma
-npm run test:ios
-npm run test:tablet
-npm run test:desktop
+docker compose run --rm tests npm run test:android     # por plataforma
+docker compose run --rm tests npm run test:ios
+docker compose run --rm tests npm run test:tablet
+docker compose run --rm tests npm run test:desktop
 
-npm run test:navbar      # por camada
-npm run test:malha
-npm run test:a11y
-npm run test:visual
-npm run test:visual:update   # regenera as baselines visuais (ver abaixo)
+docker compose run --rm tests npm run test:navbar      # por camada
+docker compose run --rm tests npm run test:malha
+docker compose run --rm tests npm run test:a11y
+docker compose run --rm tests npm run test:visual
+docker compose run --rm tests npm run test:visual:update   # regenera as baselines visuais (ver abaixo)
 ```
 
 Um perfil específico, ou um arquivo/teste específico:
 
 ```bash
-npx playwright test --project=ios-iphone-15                 # um perfil
-npx playwright test tests/navbar.spec.js                    # um arquivo
-npx playwright test -g "várias alturas"                     # por título (grep)
-npx playwright test --project=desktop-webkit -g "rail"      # combinando
+docker compose run --rm tests npx playwright test --project=ios-iphone-15                 # um perfil
+docker compose run --rm tests npx playwright test tests/navbar.spec.js                    # um arquivo
+docker compose run --rm tests npx playwright test -g "várias alturas"                     # por título (grep)
+docker compose run --rm tests npx playwright test --project=desktop-webkit -g "rail"      # combinando
 ```
 
 Para rodar um grupo arbitrário de perfis, encadeie `--project`:
-`npx playwright test --project=android-pixel-7 --project=ios-iphone-15`.
+`docker compose run --rm tests npx playwright test --project=android-pixel-7 --project=ios-iphone-15`.
 
 ### Depurar
+
+Estes comandos exigem exibir um navegador (`--headed`, `--ui`) ou abrir o relatório no seu navegador local — não fazem sentido dentro do container headless, então são a única exceção suportada à regra "só no container":
 
 ```bash
 npm run test:ui                              # modo UI interativo (time-travel)
@@ -166,10 +171,10 @@ Ao mexer em dimensionamento de célula, saiba de que lado do trade-off está mex
 Invariantes já cobertos por `malha.spec.js`, e como cada um falha na prática:
 
 | Invariante                                                                           | Falha típica                                                                          |
-| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| Nenhuma fronteira soma mais que ~1px de tinta de `--color-line`                       | `border` e `box-shadow` outset pintam em pixels ADJACENTES, não no mesmo — somam 2px     |
-| Estado interativo (`:active`, `:hover`, `:focus-visible`) não engrossa linha nenhuma | reforço de aresta no bloco pressionado duplica a divisória que o vizinho já desenhava     |
-| Toda fronteira tem tinta em repouso                                                  | divisória que sumiu numa refatoração de `box-shadow`                                     |
+| ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Nenhuma fronteira soma mais que ~1px de tinta de `--color-line`                      | `border` e `box-shadow` outset pintam em pixels ADJACENTES, não no mesmo — somam 2px  |
+| Estado interativo (`:active`, `:hover`, `:focus-visible`) não engrossa linha nenhuma | reforço de aresta no bloco pressionado duplica a divisória que o vizinho já desenhava |
+| Toda fronteira tem tinta em repouso                                                  | divisória que sumiu numa refatoração de `box-shadow`                                  |
 
 Os lugares onde isso quebra são o **primeiro** bloco, um do **meio** e o **último visível** (o que encosta na moldura da `.navbar`), nos DOIS modos. Foi exatamente o último visível, em 441×240, que escondeu uma borda de 2px por três rodadas de revisão a olho — daí existir um teste dedicado a esse tamanho.
 
@@ -181,13 +186,15 @@ NOTA sobre contraste: `contraste()` está disponível no helper, mas não há te
 
 `tests/visual.spec.js-snapshots/` É VERSIONADO — sem as imagens de referência a camada visual não tem contra o que comparar. Ícones e fonte vêm de CDN, então todo teste visual espera `document.fonts` assentar antes de capturar (ver `esperarFontes`); sem isso a captura pode sair com o glifo de fallback e acusar diferença que não tem nada a ver com o CSS.
 
-Ao mudar o visual **de propósito**: `npm run test:visual:update` e então CONFIRA o diff das imagens antes de commitar. Baseline atualizada às cegas anula a camada inteira.
+Ao mudar o visual **de propósito**: `docker compose run --rm tests npm run test:visual:update` e então CONFIRA o diff das imagens antes de commitar. Baseline atualizada às cegas anula a camada inteira.
+
+O Playwright sufixa cada baseline com o SO em que foi gerada. O diretório tem os dois conjuntos versionados: `-win32.png` (gerado antes do container existir, rodando direto no Windows) e `-linux.png` (gerado pelo `docker compose run --rm tests`, o fluxo padrão hoje, e o que o CI em `tests.yml` verifica). Os dois coexistem sem conflito — cada SO só lê o seu sufixo — mas ao atualizar baseline **de propósito**, atualize via container (`-linux.png`); as `-win32.png` só voltam a ficar desatualizadas de vez, a menos que alguém rode a suíte visual fora do container.
 
 ### Quando a tarefa está concluída
 
 Implementar o que foi pedido não encerra a tarefa:
 
-1. **`npm test` inteiro verde** — não só o arquivo ligado à mudança. As camadas se cobrem mutuamente, e a que você não rodou é justamente a que pegaria o efeito colateral.
+1. **`docker compose run --rm tests` inteiro verde** — não só o arquivo ligado à mudança. As camadas se cobrem mutuamente, e a que você não rodou é justamente a que pegaria o efeito colateral.
 2. **Avaliar como usuário final, não como autor do patch.** A mudança introduziu regressão visual, inconsistência de layout, problema de usabilidade, quebra de responsividade ou de acessibilidade em algum dos 9 perfis? O pedido original é o piso do que verificar, não o teto.
 3. **Teste pré-existente vermelho: achar a causa antes de tocar nele.** Afrouxar asserção para ficar verde só é legítimo quando o invariante de fato deixou de valer — e a justificativa vai no comentário do teste, não na mensagem de commit.
 4. **Relatar honestamente o que ficou de fora**: flanco não coberto, limitação conhecida do instrumento, achado que não foi corrigido.
@@ -200,6 +207,6 @@ Implementar o que foi pedido não encerra a tarefa:
 4. Meça o DOM renderizado com `page.evaluate(...)` (ver `collectMetrics` em `navbar.spec.js`) ou o pixel com `helpers/pixels.js` — nunca crave pixels nem hex de cor no teste; cores vêm de `lerTokens`.
 5. `test.use({ reducedMotion: "reduce" })` em testes que capturam estado interativo: sem isso a captura pode pegar o quadro no meio da transição, e o teste fica intermitente.
 6. Para medir estado pressionado, ESPERE a pintura assentar (ver `pressionar` em `malha.spec.js`) — `mouse.down()` retorna antes de o `:active` estar pintado.
-7. Rode em toda a matriz antes de concluir: `npm test`.
+7. Rode em toda a matriz antes de concluir: `docker compose run --rm tests`.
 
 Artefatos gerados (`test-results/`, `playwright-report/`) são ignorados pelo Git (ver `.gitignore`) — não commitar.
